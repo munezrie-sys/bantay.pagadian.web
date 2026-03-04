@@ -41,31 +41,26 @@ export default function App() {
   const [profiles, setProfiles] = useState([]);
   const [shortlist, setShortlist] = useState([]);
 
-  const loadData = async () => {
+ const loadData = async () => {
     try {
       const response = await fetch(SCRIPT_URL);
       const result = await response.json();
-      const dataArray = Array.isArray(result.profiles) ? result.profiles : (result.data || []);
-      setProfiles(dataArray);
+      setProfiles(Array.isArray(result.profiles) ? result.profiles : (result.data || []));
     } catch (error) {
       console.error("Fetch error:", error);
-      setProfiles([]); 
     }
-  };
-const handleSendOTP = async (email) => {
+  }; // Use just } here, no semicolon needed
+
+  // 3. OTP Function (Now correctly INSIDE App)
+  const handleSendOTP = async (email) => {
     if (!email) return alert("Please enter your email!");
     try {
       const response = await fetch(SCRIPT_URL, {
         method: "POST",
-        body: JSON.stringify({
-          action: "GENERATE_OTP",
-          email: email
-        })
+        body: JSON.stringify({ action: "GENERATE_OTP", email: email })
       });
       const result = await response.json();
-      if (result.success) {
-        alert("Verification code sent! Check your Gmail or the OTP Log.");
-      }
+      if (result.success) alert("Verification code sent!");
     } catch (error) {
       console.error("OTP Error:", error);
     }
