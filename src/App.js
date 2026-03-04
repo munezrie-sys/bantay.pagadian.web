@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // --- CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRFaTdlypbyccXydx5wAG-vgS0blK7QiycXL3GqWez0OO-Fdm7XbfETAyV29R_hVl1/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcMCXcsIQ3dMq55jCPKSak5ZTUkHKBEa0tasOin4BTKs4gzzby9S9twsTR19gbk0s/exec";
 const ADMIN_HIDDEN_EMAIL = "munezrie@gmail.com"; 
 const COLORS = { 
   forest: '#1E2F23', 
@@ -52,16 +52,16 @@ export default function App() {
   };
 
   const handleSendOTP = async (email) => {
-    if (!email) return alert("Please enter your email!");
     try {
       const response = await fetch(SCRIPT_URL, {
         method: "POST",
+        // Do NOT use mode: 'no-cors' here if you want to see the error messages
         body: JSON.stringify({ action: "GENERATE_OTP", email: email })
       });
-      const result = await response.json();
-      if (result.success) alert("Verification code sent!");
+      // If using standard fetch, the response might be opaque with Apps Script
+      // but the email should still fire on the server side.
     } catch (error) {
-      console.error("OTP Error:", error);
+      console.error("Frontend OTP Error:", error);
     }
   };
 
