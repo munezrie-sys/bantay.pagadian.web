@@ -49,8 +49,6 @@ export default function App() {
     } catch (error) {
       console.error("Fetch error:", error);
     }
-  }; // Use just } here, no semicolon needed
-
   // 3. OTP Function (Now correctly INSIDE App)
   const handleSendOTP = async (email) => {
     if (!email) return alert("Please enter your email!");
@@ -65,6 +63,7 @@ export default function App() {
       console.error("OTP Error:", error);
     }
   };
+}
   useEffect(() => {
     loadData();
   }, []);
@@ -119,7 +118,7 @@ export default function App() {
 
 // --- AUTH COMPONENT ---
 
-const AuthPortal = ({ onDone }) => {
+const AuthPortal = ({ onDone }) => {}
   const [isReg, setIsReg] = useState(false);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ email: '', name: '', role: 'Worker' });
@@ -139,7 +138,10 @@ const AuthPortal = ({ onDone }) => {
   const handleVerify = () => userInput === otp ? onDone(form) : alert("Wrong code.");
 
   return step === 1 ? (
-    <form onSubmit={triggerOTP}>
+    <form onSubmit={(e) => {
+    e.preventDefault();
+    handleSendOTP(form.email); 
+}}>
       <div style={styles.tabBox}>
         <button type="button" onClick={() => setIsReg(false)} style={!isReg ? styles.tabA : styles.tabI}>LOGIN</button>
         <button type="button" onClick={() => setIsReg(true)} style={isReg ? styles.tabA : styles.tabI}>REGISTER</button>
@@ -158,7 +160,6 @@ const AuthPortal = ({ onDone }) => {
       <button onClick={handleVerify} style={styles.btnPriFull}>VERIFY</button>
     </div>
   );
-};
 
 // --- WORKER DASHBOARD ---
 
