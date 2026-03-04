@@ -135,19 +135,20 @@ const AuthPortal = ({ onDone }) => {}
     setLoading(false); setStep(2);
   };
 
-  const handleVerify = () => userInput === otp ? onDone(form) : alert("Wrong code.");
+ const handleVerify = () => userInput === otp ? onDone(form) : alert("Wrong code.");
 
   return step === 1 ? (
     <form onSubmit={(e) => {
-    e.preventDefault();
-    handleSendOTP(form.email); 
-}}>
+      e.preventDefault();
+      handleSendOTP(form.email); 
+    }}>
       <div style={styles.tabBox}>
         <button type="button" onClick={() => setIsReg(false)} style={!isReg ? styles.tabA : styles.tabI}>LOGIN</button>
         <button type="button" onClick={() => setIsReg(true)} style={isReg ? styles.tabA : styles.tabI}>REGISTER</button>
       </div>
       <select style={styles.input} value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-        <option value="Worker">I AM A WORKER</option><option value="Employer">I AM AN EMPLOYER</option>
+        <option value="Worker">I AM A WORKER</option>
+        <option value="Employer">I AM AN EMPLOYER</option>
       </select>
       <input style={styles.input} placeholder="EMAIL ADDRESS" type="email" required onChange={e => setForm({...form, email: e.target.value})} />
       {isReg && <input style={styles.input} placeholder="FULL NAME" required onChange={e => setForm({...form, name: e.target.value})} />}
