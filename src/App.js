@@ -41,7 +41,7 @@ export default function App() {
   const [profiles, setProfiles] = useState([]);
   const [shortlist, setShortlist] = useState([]);
 
- const loadData = async () => {
+  const loadData = async () => {
     try {
       const response = await fetch(SCRIPT_URL);
       const result = await response.json();
@@ -49,7 +49,8 @@ export default function App() {
     } catch (error) {
       console.error("Fetch error:", error);
     }
-  // 3. OTP Function (Now correctly INSIDE App)
+  };
+
   const handleSendOTP = async (email) => {
     if (!email) return alert("Please enter your email!");
     try {
@@ -63,7 +64,7 @@ export default function App() {
       console.error("OTP Error:", error);
     }
   };
-}
+
   useEffect(() => {
     loadData();
   }, []);
@@ -108,7 +109,7 @@ export default function App() {
           <div style={styles.authCard}>
             <button onClick={() => setShowAuth(false)} style={styles.closeBtn}>CLOSE</button>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}><BantayLogo width="120px" /></div>
-            <AuthPortal onDone={(u) => setUser(u)} />
+            <AuthPortal onDone={(u) => setUser(u)} handleSendOTP={handleSendOTP} />
           </div>
         </div>
       )}
@@ -118,7 +119,7 @@ export default function App() {
 
 // --- AUTH COMPONENT ---
 
-const AuthPortal = ({ onDone }) => {}
+const AuthPortal = ({ onDone, handleSendOTP }) => {
   const [isReg, setIsReg] = useState(false);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ email: '', name: '', role: 'Worker' });
@@ -131,17 +132,24 @@ const AuthPortal = ({ onDone }) => {}
     setLoading(true);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setOtp(code);
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "SEND_CODE", email: form.email, code }) });
-    setLoading(false); setStep(2);
+    try {
+      await fetch(SCRIPT_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        body: JSON.stringify({ action: "SEND_CODE", email: form.email, code }) 
+      });
+      setStep(2);
+    } catch (err) {
+      alert("Failed to send code.");
+    } finally {
+      setLoading(false);
+    }
   };
 
- const handleVerify = () => userInput === otp ? onDone(form) : alert("Wrong code.");
+  const handleVerify = () => userInput === otp ? onDone(form) : alert("Wrong code.");
 
   return step === 1 ? (
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      handleSendOTP(form.email); 
-    }}>
+    <form onSubmit={triggerOTP}>
       <div style={styles.tabBox}>
         <button type="button" onClick={() => setIsReg(false)} style={!isReg ? styles.tabA : styles.tabI}>LOGIN</button>
         <button type="button" onClick={() => setIsReg(true)} style={isReg ? styles.tabA : styles.tabI}>REGISTER</button>
@@ -161,6 +169,7 @@ const AuthPortal = ({ onDone }) => {}
       <button onClick={handleVerify} style={styles.btnPriFull}>VERIFY</button>
     </div>
   );
+};
 
 // --- WORKER DASHBOARD ---
 
@@ -192,7 +201,7 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
     reader.readAsDataURL(file);
     
     reader.onload = async () => {
-      const base64Data = reader.result; // Full data URL string
+      const base64Data = reader.result; 
 
       try {
         await fetch(SCRIPT_URL, {
@@ -200,10 +209,10 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
           mode: 'no-cors',
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({
-            action: "UPLOAD_DOC", // Matches your switch case in Apps Script
+            action: "UPLOAD_DOC",
             email: user.email,
             fileName: `${docType}_${user.email}_${file.name}`,
-            base64: base64Data // Matches params.base64 in your script
+            base64: base64Data
           })
         });
         alert(`${docType} upload request sent! Check BANTAY_VAULT folder.`);
@@ -212,7 +221,7 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
         alert("Upload failed.");
       } finally {
         setIsUploading(false);
-        e.target.value = null; // Clear the input
+        e.target.value = null;
       }
     };
   };
