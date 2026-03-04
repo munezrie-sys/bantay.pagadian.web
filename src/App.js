@@ -68,9 +68,19 @@ export default function App() {
   const [profiles, setProfiles] = useState([]);
   const [shortlist, setShortlist] = useState([]);
 
-  const loadData = () => fetch(SCRIPT_URL).then(r => r.json()).then(setProfiles).catch(console.error);
-  useEffect(() => { loadData(); }, []);
-
+  const loadData = () => {
+  fetch(SCRIPT_URL)
+    .then(r => r.json())
+    .then(data => {
+      // Safety check: only update if data is a list (Array)
+      if (Array.isArray(data)) {
+        setProfiles(data);
+      } else {
+        console.error("Data is not an array:", data);
+      }
+    })
+    .catch(error => console.error("Fetch error:", error));
+};
   const getAvg = (s) => {
     const a = s?.toString().split(',').map(Number).filter(n => !isNaN(n)) || [];
     return a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1) : "0.0";
