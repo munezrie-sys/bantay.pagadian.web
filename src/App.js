@@ -298,7 +298,7 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
       </div>
     </div>
   );
-}; // <--- THIS BRACE CLOSES WORKERDASH AND FIXES TS(1005)
+}; 
 
 // --- EMPLOYER DASHBOARD ---
 
