@@ -112,38 +112,43 @@ export default function App() {
 }
 
 // --- AUTH PORTAL COMPONENT ---
+// --- FIXED AUTH PORTAL ---
 const AuthPortal = ({ onDone, handleSendOTP }) => {
   const [isReg, setIsReg] = useState(false);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ email: '', name: '', role: 'Worker' });
-  const [userInput, setUserInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const triggerOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await handleSendOTP(form.email);
+    await handleSendOTP(form.email); // Calling your existing handleSendOTP
     setLoading(false);
     setStep(2);
   };
 
-  return step === 1 ? (
-    <form onSubmit={triggerOTP}>
-      <div style={styles.tabBox}>
-        <button type="button" onClick={() => setIsReg(false)} style={!isReg ? styles.tabA : styles.tabI}>LOGIN</button>
-        <button type="button" onClick={() => setIsReg(true)} style={isReg ? styles.tabA : styles.tabI}>REGISTER</button>
-      </div>
-      <select style={styles.input} value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-        <option value="Worker">I AM A WORKER</option>
-        <option value="Employer">I AM AN EMPLOYER</option>
-      </select>
-      <input style={styles.input} placeholder="EMAIL" type="email" required onChange={e => setForm({...form, email: e.target.value})} />
-      {isReg && <input style={styles.input} placeholder="NAME" required onChange={e => setForm({...form, name: e.target.value})} />}
-      <button type="submit" style={styles.btnPriFull} disabled={loading}>{loading ? "SENDING..." : "CONTINUE"}</button>
-    </form>
-  ) : (
+  if (step === 1) {
+    return (
+      <form onSubmit={triggerOTP}>
+        <div style={styles.tabBox}>
+          <button type="button" onClick={() => setIsReg(false)} style={!isReg ? styles.tabA : styles.tabI}>LOGIN</button>
+          <button type="button" onClick={() => setIsReg(true)} style={isReg ? styles.tabA : styles.tabI}>REGISTER</button>
+        </div>
+        <select style={styles.input} value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
+          <option value="Worker">I AM A WORKER</option>
+          <option value="Employer">I AM AN EMPLOYER</option>
+        </select>
+        <input style={styles.input} placeholder="EMAIL" type="email" required onChange={e => setForm({...form, email: e.target.value})} />
+        {isReg && <input style={styles.input} placeholder="NAME" required onChange={e => setForm({...form, name: e.target.value})} />}
+        <button type="submit" style={styles.btnPriFull} disabled={loading}>{loading ? "SENDING..." : "CONTINUE"}</button>
+      </form>
+    );
+  }
+
+  return (
     <div>
-      <input style={styles.input} placeholder="ENTER OTP" onChange={e => setUserInput(e.target.value)} />
+      <p style={{fontSize: '12px', marginBottom: '20px', color: '#666'}}>Code sent to {form.email}</p>
+      <input style={styles.input} placeholder="ENTER CODE" />
       <button onClick={() => onDone(form)} style={styles.btnPriFull}>VERIFY</button>
     </div>
   );
