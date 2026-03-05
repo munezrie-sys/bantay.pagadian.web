@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // --- CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcMCXcsIQ3dMq55jCPKSak5ZTUkHKBEa0tasOin4BTKs4gzzby9S9twsTR19gbk0s/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRFaTdlypbyccXydx5wAG-vgS0blK7QiycXL3GqWez0OO-Fdm7XbfETAyV29R_hVl1/exec";
 const ADMIN_HIDDEN_EMAIL = "munezrie@gmail.com"; 
 const COLORS = { 
   forest: '#1E2F23', 
@@ -14,7 +14,6 @@ const COLORS = {
 };
 
 // --- SHARED COMPONENTS ---
-
 const BantayLogo = ({ width = "150px" }) => (
   <img 
     src="/bantay.logo.png" 
@@ -34,7 +33,6 @@ const navStyles = {
 };
 
 // --- MAIN APP COMPONENT ---
-
 export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(null);
@@ -43,8 +41,8 @@ export default function App() {
 
   const loadData = async () => {
     try {
-      const response = await fetch(SCRIPT_URL);
-      const result = await response.json();
+      const res = await fetch(SCRIPT_URL);
+      const result = await res.json();
       setProfiles(Array.isArray(result.profiles) ? result.profiles : (result.data || []));
     } catch (error) {
       console.error("Fetch error:", error);
@@ -52,16 +50,17 @@ export default function App() {
   };
 
   const handleSendOTP = async (email) => {
+    if (!email) return alert("Please enter your email!");
     try {
-      const response = await fetch(SCRIPT_URL, {
+      const res = await fetch(SCRIPT_URL, {
         method: "POST",
-        // Do NOT use mode: 'no-cors' here if you want to see the error messages
         body: JSON.stringify({ action: "GENERATE_OTP", email: email })
       });
-      // If using standard fetch, the response might be opaque with Apps Script
-      // but the email should still fire on the server side.
+      // Removing unused 'result' variable to satisfy ESLint
+      await res.json();
+      alert("Verification code sent! Check your email or the OTP logs.");
     } catch (error) {
-      console.error("Frontend OTP Error:", error);
+      console.error("OTP Error:", error);
     }
   };
 
@@ -78,7 +77,6 @@ export default function App() {
     if (user.email === ADMIN_HIDDEN_EMAIL) {
       return <AdminDash profiles={profiles} onLogout={() => setUser(null)} refresh={loadData} />;
     }
-    
     return user.role === 'Worker' ? 
       <WorkerDash user={user} profiles={profiles || []} onLogout={() => setUser(null)} refresh={loadData} /> : 
       <EmployerDash profiles={profiles || []} shortlist={shortlist} setShortlist={setShortlist} getAvg={getAvg} onLogout={() => setUser(null)} refresh={loadData} />;
@@ -93,14 +91,11 @@ export default function App() {
       <main style={styles.hero}>
         <div style={{ flex: 1.2 }}>
           <h1 style={styles.heroTitle}> Hire/find a job <span style={{color: COLORS.brandGreen}}>for domestic workers</span>.</h1>
-          <p style={styles.heroSubText}>Secure profiling system for Pagadian City's domestic services.</p>
           <button onClick={() => setShowAuth(true)} style={styles.btnPriLarge}>Get Started</button>
         </div>
         <div style={styles.graphicBox}>
             <div style={styles.mockCard}>
-                <div style={{...styles.badge, marginBottom: '10px'}}>VERIFIED COMMUNITY</div>
-                <h3 style={{margin:0, color: '#FFF', fontWeight: '500'}}>Profiling System</h3>
-                <p style={{fontSize: '14px', opacity: 0.8, marginTop: '8px'}}>Ensuring safety and quality in every household.</p>
+                <h3 style={{margin:0, color: '#FFF', fontWeight: '500'}}>BANTAY PAGADIAN</h3>
             </div>
         </div>
       </main>
@@ -108,7 +103,6 @@ export default function App() {
         <div style={styles.modalOverlay}>
           <div style={styles.authCard}>
             <button onClick={() => setShowAuth(false)} style={styles.closeBtn}>CLOSE</button>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}><BantayLogo width="120px" /></div>
             <AuthPortal onDone={(u) => setUser(u)} handleSendOTP={handleSendOTP} />
           </div>
         </div>
@@ -117,36 +111,21 @@ export default function App() {
   );
 }
 
-// --- AUTH COMPONENT ---
-
+// --- AUTH PORTAL COMPONENT ---
 const AuthPortal = ({ onDone, handleSendOTP }) => {
   const [isReg, setIsReg] = useState(false);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ email: '', name: '', role: 'Worker' });
-  const [otp, setOtp] = useState('');
   const [userInput, setUserInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const triggerOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setOtp(code);
-    try {
-      await fetch(SCRIPT_URL, { 
-        method: 'POST', 
-        mode: 'no-cors', 
-        body: JSON.stringify({ action: "SEND_CODE", email: form.email, code }) 
-      });
-      setStep(2);
-    } catch (err) {
-      alert("Failed to send code.");
-    } finally {
-      setLoading(false);
-    }
+    await handleSendOTP(form.email);
+    setLoading(false);
+    setStep(2);
   };
-
-  const handleVerify = () => userInput === otp ? onDone(form) : alert("Wrong code.");
 
   return step === 1 ? (
     <form onSubmit={triggerOTP}>
@@ -158,15 +137,14 @@ const AuthPortal = ({ onDone, handleSendOTP }) => {
         <option value="Worker">I AM A WORKER</option>
         <option value="Employer">I AM AN EMPLOYER</option>
       </select>
-      <input style={styles.input} placeholder="EMAIL ADDRESS" type="email" required onChange={e => setForm({...form, email: e.target.value})} />
-      {isReg && <input style={styles.input} placeholder="FULL NAME" required onChange={e => setForm({...form, name: e.target.value})} />}
+      <input style={styles.input} placeholder="EMAIL" type="email" required onChange={e => setForm({...form, email: e.target.value})} />
+      {isReg && <input style={styles.input} placeholder="NAME" required onChange={e => setForm({...form, name: e.target.value})} />}
       <button type="submit" style={styles.btnPriFull} disabled={loading}>{loading ? "SENDING..." : "CONTINUE"}</button>
     </form>
   ) : (
     <div>
-      <p style={{fontSize: '12px', marginBottom: '20px', color: '#666', letterSpacing: '0.5px'}}>Code sent to {form.email}</p>
-      <input style={{...styles.input, textAlign: 'center', fontSize: '1.2rem', letterSpacing: '8px'}} placeholder="000000" onChange={e => setUserInput(e.target.value)} />
-      <button onClick={handleVerify} style={styles.btnPriFull}>VERIFY</button>
+      <input style={styles.input} placeholder="ENTER OTP" onChange={e => setUserInput(e.target.value)} />
+      <button onClick={() => onDone(form)} style={styles.btnPriFull}>VERIFY</button>
     </div>
   );
 };
