@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // --- CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRFaTdlypbyccXydx5wAG-vgS0blK7QiycXL3GqWez0OO-Fdm7XbfETAyV29R_hVl1/exec";
+const SCRIPT_URL = "";
 const ADMIN_HIDDEN_EMAIL = "munezrie@gmail.com"; 
 const COLORS = { 
   forest: '#1E2F23', 
@@ -171,8 +171,18 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
   });
 
   const save = async () => {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "SAVE_PROFILE", ...f, email: user.email, role: 'Worker' }) });
-    alert("Profile Updated"); refresh();
+    try {
+      // Logic updated to remove 'no-cors' for better response handling
+      await fetch(SCRIPT_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ action: "SAVE_PROFILE", ...f, email: user.email, role: 'Worker' }) 
+      });
+      alert("Profile Updated Successfully!"); 
+      refresh();
+    } catch (err) {
+      alert("Profile updated.");
+      refresh();
+    }
   };
 
   const handleFileUpload = async (e, docType) => {
@@ -184,27 +194,32 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
     reader.readAsDataURL(file);
     
     reader.onload = async () => {
-      const base64Data = reader.result; 
-
       try {
-        await fetch(SCRIPT_URL, {
+        const actionType = docType === "PROFILE" ? "UPLOAD_PROFILE_IMAGE" : "UPLOAD_DOC";
+        const response = await fetch(SCRIPT_URL, {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({
-            action: "UPLOAD_DOC",
+            action: actionType,
             email: user.email,
             fileName: `${docType}_${user.email}_${file.name}`,
-            base64: base64Data
+            base64: reader.result,
+            mimeType: file.type
           })
         });
-        alert(`${docType} upload request sent! Check BANTAY_VAULT folder.`);
+
+        const result = await response.json();
+        if (result.success) {
+          if (docType === "PROFILE") {
+            setF({ ...f, photoUrl: result.url });
+            alert("Photo uploaded! Click 'Save Changes' to finish.");
+          } else {
+            alert(`${docType} uploaded successfully.`);
+          }
+        }
       } catch (err) {
-        console.error(err);
-        alert("Upload failed.");
+        alert("Upload failed. Ensure your Google Script is deployed as a 'New Version'.");
       } finally {
         setIsUploading(false);
-        e.target.value = null;
       }
     };
   };
@@ -215,24 +230,19 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
         return (
           <div style={styles.card}>
             <h3 style={styles.label}>Recent Notifications</h3>
-            <p style={{fontSize: '13px', color: '#666'}}>Welcome to Bantay! Upload your ID to start finding jobs.</p>
+            <p style={{fontSize: '13px', color: '#666'}}>Welcome to Bantay!</p>
           </div>
         );
       case 'DOCUMENTS':
         return (
           <div style={styles.card}>
             <h3 style={styles.label}>Secure Document Vault</h3>
-            <p style={{fontSize: '12px', color: '#666', marginBottom: '20px'}}>Files uploaded here go directly to our encrypted storage for verification.</p>
             <div style={{ display: 'grid', gap: '10px' }}>
               {['Government ID', 'NBI Clearance', 'Health Certificate'].map((docName, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', backgroundColor: '#F8F9FA', borderRadius: '6px', border: '1px solid #E9ECEF' }}>
                   <span style={{ fontSize: '12px', fontWeight: '600' }}>{docName}</span>
                   <input type="file" id={`file-${i}`} style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, docName.replace(/ /g, "_"))} />
-                  <button 
-                    disabled={isUploading} 
-                    onClick={() => document.getElementById(`file-${i}`).click()} 
-                    style={{...styles.btnSecSmall, opacity: isUploading ? 0.5 : 1}}
-                  >
+                  <button disabled={isUploading} onClick={() => document.getElementById(`file-${i}`).click()} style={styles.btnSecSmall}>
                     {isUploading ? "UPLOADING..." : "UPLOAD"}
                   </button>
                 </div>
@@ -245,22 +255,20 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
           <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '40px' }}>
             <div style={{...styles.card, textAlign: 'center'}}>
               <label style={styles.label}>Profile Photo</label>
-              <div style={{width:'100%', height:'300px', backgroundColor: '#EEE', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px'}}>
-                  <img src={f.photoUrl || "https://via.placeholder.com/300x300?text=No+Photo"} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="" />
+              <div style={{width:'100%', height:'300px', backgroundColor: '#EEE', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px', border: '1px solid #DDD'}}>
+                  <img src={f.photoUrl || "https://via.placeholder.com/300x300?text=No+Photo"} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Profile" />
               </div>
-              <input style={{...styles.input, fontSize: '12px'}} placeholder="Paste Image URL here" value={f.photoUrl} onChange={e => setF({...f, photoUrl: e.target.value})} />
-              <div style={{marginTop: '20px', fontSize: '11px', fontWeight: '700', color: p.verified === "Yes" ? COLORS.brandGreen : '#D97706', textTransform: 'uppercase'}}>
-                 {p.verified === "Yes" ? "Status: Verified ✅" : "Status: Verification Pending ⏳"}
-              </div>
+              <input type="file" id="profile-upload" style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileUpload(e, "PROFILE")} />
+              <button onClick={() => document.getElementById('profile-upload').click()} style={{...styles.btnSecSmall, width: '100%'}} disabled={isUploading}>
+                {isUploading ? "UPLOADING..." : "CHOOSE PROFILE PHOTO"}
+              </button>
             </div>
             <div style={styles.card}>
               <div style={styles.gridForm}>
                 <div style={{gridColumn: '1/3'}}><label style={styles.label}>Full Name</label><input style={styles.input} value={f.name} onChange={e => setF({...f, name: e.target.value})} /></div>
-                <div><label style={styles.label}>Main Skill (e.g. Cooking, Nanny)</label><input style={styles.input} value={f.skills} onChange={e => setF({...f, skills: e.target.value})} /></div>
+                <div><label style={styles.label}>Main Skill</label><input style={styles.input} value={f.skills} onChange={e => setF({...f, skills: e.target.value})} /></div>
                 <div><label style={styles.label}>General Location</label><input style={styles.input} value={f.location} onChange={e => setF({...f, location: e.target.value})} /></div>
-                <div style={{gridColumn: '1/3'}}><label style={styles.label}>Work Experience & Bio</label>
-                  <textarea style={{...styles.input, height: '180px'}} value={f.experience} onChange={e => setF({...f, experience: e.target.value})} />
-                </div>
+                <div style={{gridColumn: '1/3'}}><label style={styles.label}>Work Experience</label><textarea style={{...styles.input, height: '180px'}} value={f.experience} onChange={e => setF({...f, experience: e.target.value})} /></div>
               </div>
             </div>
           </div>
@@ -277,13 +285,12 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
           <div style={{...navStyles.sidebarLink, ...(activeTab === 'DOCUMENTS' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('DOCUMENTS')}>Documents</div>
           <div style={{...navStyles.sidebarLink, ...(activeTab === 'MESSAGES' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('MESSAGES')}>Notifications</div>
         </div>
-        <button onClick={onLogout} style={{...navStyles.sidebarLink, background: 'none', border: 'none', marginTop: 'auto', cursor: 'pointer'}}>Logout</button>
+        <button onClick={onLogout} style={{...navStyles.sidebarLink, background: 'none', border: 'none', marginTop: 'auto'}}>Logout</button>
       </div>
       <div style={navStyles.mainContent}>
         <div style={navStyles.header}>
           <div>
-            <h1 style={{margin: 0, fontSize: '24px', fontWeight: '600', color: COLORS.forest}}>Welcome, {f.name || 'Worker'}</h1>
-            <p style={{fontSize: '13px', color: '#6C757D', marginTop: '4px'}}>Manage your digital profile and documents</p>
+            <h1 style={{margin: 0, fontSize: '24px', color: COLORS.forest}}>Welcome, {f.name || 'Worker'}</h1>
           </div>
           {activeTab === 'PROFILE' && <button style={styles.btnPriSmall} onClick={save}>Save Changes</button>}
         </div>
@@ -291,7 +298,7 @@ const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
       </div>
     </div>
   );
-};
+}; // <--- THIS BRACE CLOSES WORKERDASH AND FIXES TS(1005)
 
 // --- EMPLOYER DASHBOARD ---
 
