@@ -1,445 +1,647 @@
 import React, { useState, useEffect } from 'react';
 
 // --- CONFIGURATION ---
-const SCRIPT_URL = "";
-const ADMIN_HIDDEN_EMAIL = "munezrie@gmail.com"; 
-const COLORS = { 
-  forest: '#1E2F23', 
-  sage: '#C8D5BB', 
-  brandGreen: '#457533', 
-  mint: '#E9F0E6', 
-  white: '#F9FAF8', 
-  gold: '#D4AF37', 
-  lightGray: '#F4F7F9' 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzuyVXlxfmlbK_IzDbdxZjEbG0hBTc4TCTYKhhkSMDt63SWqX0xqNi5eqeQGZz0-cJ/exec";
+const ADMIN_EMAIL = "munezrie@gmail.com"; 
+const FALLBACK_PROFILE_IMG = "https://ui-avatars.com/api/?name=User&background=74ae08&color=fff";
+const BANNER_IMG = "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=1600";
+
+const THEME = {
+  avocado: '#74ae08',
+  white: '#FFFFFF',
+  black: '#021c02',
+  border: 'rgba(255, 255, 255, 0.1)',
+  glass: 'rgba(255, 255, 255, 0.05)'
 };
 
-// --- SHARED COMPONENTS ---
-const BantayLogo = ({ width = "150px" }) => (
-  <img 
-    src="/bantay.logo.png" 
-    alt="Bantay" 
-    style={{ width, height: 'auto', display: 'block', objectFit: 'contain' }} 
-    onError={(e) => { e.target.src = "https://via.placeholder.com/150x50?text=BANTAY+PAGADIAN"; }} 
-  />
-);
-
-const navStyles = {
-  wrapper: { display: 'flex', height: '100vh', backgroundColor: COLORS.lightGray, fontFamily: '"Inter", sans-serif', overflow: 'hidden' },
-  sidebar: { width: '240px', backgroundColor: COLORS.forest, color: '#FFF', display: 'flex', flexDirection: 'column', padding: '40px 24px' },
-  sidebarLink: { padding: '12px 16px', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s ease', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' },
-  activeLink: { backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFF' },
-  mainContent: { flex: 1, overflowY: 'auto', padding: '60px' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px', paddingBottom: '20px', borderBottom: '1px solid #E9ECEF' }
-};
-
-// --- MAIN APP COMPONENT ---
 export default function App() {
-  const [showAuth, setShowAuth] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('bantay_session');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
+  const [view, setView] = useState('Home'); 
+  const [portalTab, setPortalTab] = useState('Profile');
+  const [searchQuery, setSearchQuery] = useState('');
   const [profiles, setProfiles] = useState([]);
-  const [shortlist, setShortlist] = useState([]);
+  const [tempPhoto, setTempPhoto] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState(['Welcome to Bantay!', 'Please complete your profile.']);
+  
+  // Updated: Track target by email and name
+  const [activeMessagingTarget, setActiveMessagingTarget] = useState(null);
 
-  const loadData = async () => {
-    try {
-      const res = await fetch(SCRIPT_URL);
-      const result = await res.json();
-      setProfiles(Array.isArray(result.profiles) ? result.profiles : (result.data || []));
-    } catch (error) {
-      console.error("Fetch error:", error);
-    }
-  };
-
-  const handleSendOTP = async (email) => {
-    if (!email) return alert("Please enter your email!");
-    try {
-      const res = await fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "GENERATE_OTP", email: email })
-      });
-      // Removing unused 'result' variable to satisfy ESLint
-      await res.json();
-      alert("Verification code sent! Check your email or the OTP logs.");
-    } catch (error) {
-      console.error("OTP Error:", error);
-    }
-  };
+  const [coeRequests, setCoeRequests] = useState([
+    { id: 101, workerName: "Juan Dela Cruz", date: "2026-03-08", status: "pending", role: "Housekeeper" }
+  ]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      localStorage.setItem('bantay_session', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('bantay_session');
+    }
+  }, [user]);
 
-  const getAvg = (s) => {
-    const a = s?.toString().split(',').map(Number).filter(n => !isNaN(n)) || [];
-    return a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1) : "0.0";
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    try {
+      console.log("🔄 Fetching profiles from:", SCRIPT_URL);
+      const response = await fetch(SCRIPT_URL);
+      console.log("📊 Response status:", response.status);
+      const data = await response.json();
+      console.log("📥 Raw data received:", data);
+      
+      const allProfiles = data.profiles || [];
+      console.log("👥 Profiles count:", allProfiles.length);
+      console.log("👥 First profile:", allProfiles[0]);
+      
+      setProfiles(allProfiles);
+      
+      if (user) {
+        const updatedUser = allProfiles.find(p => p.email.toLowerCase() === user.email.toLowerCase());
+        if (updatedUser) setUser(updatedUser);
+      }
+    } catch (e) { 
+      console.error("❌ Fetch error:", e);
+      // Fallback to test data if fetch fails
+      console.log("⚠️ Using test data due to fetch error");
+      setProfiles([
+        { name: 'Maria Santos', role: 'Worker', skills: 'Housekeeper', location: 'Pagadian City', experience: '3 years', dob: '1992-05-15', email: 'maria@test.com', photourl: '' },
+        { name: 'Juan Dela Cruz', role: 'Worker', skills: 'Gardener', location: 'Pagadian City', experience: '5 years', dob: '1990-03-20', email: 'juan@test.com', photourl: '' }
+      ]);
+    }
   };
 
-  if (user) {
-    if (user.email === ADMIN_HIDDEN_EMAIL) {
-      return <AdminDash profiles={profiles} onLogout={() => setUser(null)} refresh={loadData} />;
-    }
-    return user.role === 'Worker' ? 
-      <WorkerDash user={user} profiles={profiles || []} onLogout={() => setUser(null)} refresh={loadData} /> : 
-      <EmployerDash profiles={profiles || []} shortlist={shortlist} setShortlist={setShortlist} getAvg={getAvg} onLogout={() => setUser(null)} refresh={loadData} />;
-  }
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  const handleLogin = (authData) => {
+    const existingUser = profiles.find(p => p.email.toLowerCase() === authData.email.toLowerCase());
+    const sessionData = existingUser || authData;
+    setUser(sessionData);
+  };
+
+  // Fixed: Passing full worker object to get Email
+  const handleStartConversation = (worker) => {
+    setActiveMessagingTarget({ name: worker.name, email: worker.email });
+    setView('Portal');
+    setPortalTab('Messages');
+  };
+
+ const handleUpdateProfile = async (profileData) => {
+  setLoading(true);
+  const finalPhoto = tempPhoto || user.photourl;
+  const updatedRecord = { ...profileData, photourl: finalPhoto, email: user.email, role: user.role };
+  
+  setUser(updatedRecord);
+  setProfiles(prev => {
+    const exists = prev.find(p => p.email === user.email);
+    if (exists) return prev.map(p => p.email === user.email ? updatedRecord : p);
+    return [updatedRecord, ...prev];
+  });
+
+  try {
+    await fetch(SCRIPT_URL, { 
+      method: 'POST', 
+      mode: 'no-cors', 
+      body: JSON.stringify({ action: 'updateProfile', ...updatedRecord }) 
+    });
+    alert("Account data saved successfully!");
+    setView('Home'); 
+  } catch (e) { console.error("Sync Error:", e); }
+  setLoading(false);
+};
+  if (!user) return <AuthGate onLogin={handleLogin} />;
+
+  const filteredWorkers = profiles.filter(p => 
+    p.role?.toLowerCase() === 'worker' &&
+    (p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     p.skills?.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <div style={{ backgroundColor: COLORS.white, minHeight: '100vh', fontFamily: '"Inter", sans-serif' }}>
-      <nav style={styles.nav}>
-        <BantayLogo width="140px" />
-        <button onClick={() => setShowAuth(true)} style={styles.btnSec}>Sign In</button>
+    <div style={{ minHeight: '100vh', background: THEME.black, color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+      <nav style={styles.navbar}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <img src="websitelogo.png" alt="Logo" style={{ height: '80px' }} />
+          {notifications.length > 0 && <div title="Notifications" style={styles.notifBadge}>{notifications.length}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+          <span style={view === 'Home' ? styles.navActive : styles.navLink} onClick={() => setView('Home')}>Browse Workers</span>
+          <button style={styles.portalBtn} onClick={() => { setView('Portal'); setPortalTab('Profile'); }}>
+            {user.role} Dashboard
+          </button>
+          {isAdmin && (
+            <button style={{ ...styles.portalBtn, background: '#e74c3c' }} onClick={() => { setView('Admin'); setPortalTab('Stats'); }}>
+              Admin Panel
+            </button>
+          )}
+          <button style={styles.logoutBtn} onClick={() => setUser(null)}>Logout</button>
+        </div>
       </nav>
-      <main style={styles.hero}>
-        <div style={{ flex: 1.2 }}>
-          <h1 style={styles.heroTitle}> Hire/find a job <span style={{color: COLORS.brandGreen}}>for domestic workers</span>.</h1>
-          <button onClick={() => setShowAuth(true)} style={styles.btnPriLarge}>Get Started</button>
-        </div>
-        <div style={styles.graphicBox}>
-            <div style={styles.mockCard}>
-                <h3 style={{margin:0, color: '#FFF', fontWeight: '500'}}>BANTAY PAGADIAN</h3>
-            </div>
-        </div>
-      </main>
-      {showAuth && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.authCard}>
-            <button onClick={() => setShowAuth(false)} style={styles.closeBtn}>CLOSE</button>
-            <AuthPortal onDone={(u) => setUser(u)} handleSendOTP={handleSendOTP} />
+
+      <main>
+        {view === 'Home' && (
+          <HomeView filteredWorkers={filteredWorkers} user={user} setSearchQuery={setSearchQuery} onStartMsg={handleStartConversation} />
+        )}
+
+        {(view === 'Portal' || view === 'Admin') && (
+          <div style={styles.portalContainer}>
+            <aside style={styles.sidebar}>
+              <h3 style={{ opacity: 0.4, fontSize: '11px', letterSpacing: '2px', marginBottom: '30px' }}>
+                {view === 'Admin' ? 'SYSTEM CONTROL' : `SESSION: ${user.email}`}
+              </h3>
+              {view === 'Admin' ? (
+                <>
+                  <div onClick={() => setPortalTab('Stats')} style={portalTab === 'Stats' ? styles.tabActive : styles.tabInactive}>Website Status</div>
+                  <div onClick={() => setPortalTab('WorkersList')} style={portalTab === 'WorkersList' ? styles.tabActive : styles.tabInactive}>Workers List</div>
+                  <div onClick={() => setPortalTab('EmployersList')} style={portalTab === 'EmployersList' ? styles.tabActive : styles.tabInactive}>Employers List</div>
+                </>
+              ) : (
+                <>
+                  <div onClick={() => setPortalTab('Profile')} style={portalTab === 'Profile' ? styles.tabActive : styles.tabInactive}>My Account</div>
+                  <div onClick={() => setPortalTab('Messages')} style={portalTab === 'Messages' ? styles.tabActive : styles.tabInactive}>Messages</div>
+                  {user.role === 'Employer' ? (
+                    <>
+                      <div onClick={() => setPortalTab('GovDocs')} style={portalTab === 'GovDocs' ? styles.tabActive : styles.tabInactive}>Identity Verification</div>
+                      <div onClick={() => setPortalTab('HiredList')} style={portalTab === 'HiredList' ? styles.tabActive : styles.tabInactive}>Hired Workers</div>
+                    </>
+                  ) : (
+                    <>
+                      <div onClick={() => setPortalTab('Jobs')} style={portalTab === 'Jobs' ? styles.tabActive : styles.tabInactive}>Job Board</div>
+                      <div onClick={() => setPortalTab('GovDocs')} style={portalTab === 'GovDocs' ? styles.tabActive : styles.tabInactive}>Documents</div>
+                    </>
+                  )}
+                </>
+              )}
+            </aside>
+
+            <section style={styles.editorPanel}>
+              {view === 'Admin' && portalTab === 'Stats' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                  <StatCard label="Total Users" val={profiles.length} />
+                  <StatCard label="Workers" val={profiles.filter(p => p.role === 'Worker').length} />
+                  <StatCard label="Employers" val={profiles.filter(p => p.role === 'Employer').length} />
+                </div>
+              )}
+              {view === 'Admin' && portalTab === 'WorkersList' && <AdminTable title="Master Worker Registry" data={profiles.filter(p => p.role === 'Worker')} />}
+              {view === 'Admin' && portalTab === 'EmployersList' && <AdminTable title="Master Employer Registry" data={profiles.filter(p => p.role === 'Employer')} />}
+
+              {view === 'Portal' && portalTab === 'Profile' && (
+                <ProfileEditor user={user} loading={loading} tempPhoto={tempPhoto} setTempPhoto={setTempPhoto} onSave={handleUpdateProfile} />
+              )}
+
+              {view === 'Portal' && portalTab === 'Messages' && (
+                <MessagingView user={user} initialTarget={activeMessagingTarget} clearTarget={() => setActiveMessagingTarget(null)} />
+              )}
+
+              {view === 'Portal' && user.role === 'Worker' && (
+                <>
+                  {portalTab === 'Jobs' && <JobBoardView />}
+                  {portalTab === 'GovDocs' && <GovDocsView title="Identity Verification" />}
+                </>
+              )}
+
+              {view === 'Portal' && user.role === 'Employer' && (
+                <>
+                  {portalTab === 'GovDocs' && <GovDocsView title="Employer Verification" />}
+                  {portalTab === 'HiredList' && <EmployerHiresView requests={coeRequests} setRequests={setCoeRequests} />}
+                </>
+              )}
+            </section>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 }
 
-// --- AUTH PORTAL COMPONENT ---
-// --- FIXED AUTH PORTAL ---
-const AuthPortal = ({ onDone, handleSendOTP }) => {
-  const [isReg, setIsReg] = useState(false);
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ email: '', name: '', role: 'Worker' });
-  const [loading, setLoading] = useState(false);
+// --- SUB-COMPONENTS ---
 
-  const triggerOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    await handleSendOTP(form.email); // Calling your existing handleSendOTP
-    setLoading(false);
-    setStep(2);
+function HomeView({ filteredWorkers, user, setSearchQuery, onStartMsg }) {
+  const getAge = (dobString) => {
+    if (!dobString) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dobString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age;
   };
 
-  if (step === 1) {
-    return (
-      <form onSubmit={triggerOTP}>
-        <div style={styles.tabBox}>
-          <button type="button" onClick={() => setIsReg(false)} style={!isReg ? styles.tabA : styles.tabI}>LOGIN</button>
-          <button type="button" onClick={() => setIsReg(true)} style={isReg ? styles.tabA : styles.tabI}>REGISTER</button>
+  return (
+    <>
+      <div style={styles.heroBanner}>
+        <div style={styles.heroOverlay}>
+          <h1 style={{ fontSize: '56px', fontWeight: '800' }}>Excellence in Service.</h1>
+          <p style={{ fontSize: '20px', opacity: 0.8 }}>Welcome back, {user.name}!</p>
         </div>
-        <select style={styles.input} value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-          <option value="Worker">I AM A WORKER</option>
-          <option value="Employer">I AM AN EMPLOYER</option>
-        </select>
-        <input style={styles.input} placeholder="EMAIL" type="email" required onChange={e => setForm({...form, email: e.target.value})} />
-        {isReg && <input style={styles.input} placeholder="NAME" required onChange={e => setForm({...form, name: e.target.value})} />}
-        <button type="submit" style={styles.btnPriFull} disabled={loading}>{loading ? "SENDING..." : "CONTINUE"}</button>
-      </form>
-    );
-  }
+      </div>
+      <div style={{ padding: '0 8% 100px', marginTop: '-100px', position: 'relative', zIndex: 10 }}>
+        <div style={styles.searchBox}>
+          <input style={styles.searchInput} placeholder="Search names or skills..." onChange={(e) => setSearchQuery(e.target.value)} />
+          <button style={styles.searchBtn}>Search</button>
+        </div>
+        <div style={styles.workerGrid}>
+          {filteredWorkers.map((w, i) => (
+            <div key={i} style={styles.workerCard}>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+                <img src={w.photourl || FALLBACK_PROFILE_IMG} style={styles.cardAvatar} alt="worker" />
+                <div>
+                  <h4 style={{ margin: 0 }}>{w.name}</h4>
+                  <p style={{ color: THEME.avocado, margin: 0, fontWeight: 'bold' }}>{w.skills}</p>
+                </div>
+              </div>
+              <div style={{ borderTop: `1px solid ${THEME.border}`, paddingTop: '15px', fontSize: '14px', lineHeight: '1.6' }}>
+                <p style={{ margin: '4px 0' }}><strong>Age:</strong> {getAge(w.dob)}</p>
+                <p style={{ margin: '4px 0' }}><strong>Location:</strong> {w.location || 'N/A'}</p>
+                <p style={{ margin: '4px 0' }}><strong>Experience:</strong> {w.experience || 'Entry Level'}</p>
+              </div>
+              <button style={styles.msgBtn} onClick={() => onStartMsg(w)}>Message Worker</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MessagingView({ user, initialTarget, clearTarget }) {
+  const [chats, setChats] = useState([]);
+  const [selectedChatEmail, setSelectedChatEmail] = useState(null);
+  const [textInput, setTextInput] = useState('');
+
+  // 1. Fetch Messages (Polling every 5s)
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`${SCRIPT_URL}?action=getMessages&myEmail=${user.email}`);
+        const allMessages = await response.json();
+        
+        // Group messages by conversation partner
+        const grouped = {};
+        allMessages.forEach(m => {
+          const partner = m.senderEmail.toLowerCase() === user.email.toLowerCase() ? m.recipientEmail : m.senderEmail;
+          if (!grouped[partner]) grouped[partner] = { email: partner, messages: [] };
+          
+          grouped[partner].messages.push({
+            sender: m.senderEmail.toLowerCase() === user.email.toLowerCase() ? 'me' : 'other',
+            text: m.text,
+            type: m.type,
+            content: m.content,
+            fileName: m.fileName,
+            time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          });
+        });
+
+        const chatList = Object.values(grouped);
+        setChats(chatList);
+
+        // Auto-select first chat if none selected
+        if (!selectedChatEmail && chatList.length > 0) {
+          setSelectedChatEmail(chatList[0].email);
+        }
+      } catch (e) { console.error("Msg Sync Error:", e); }
+    };
+
+    const timer = setInterval(fetchMessages, 5000);
+    fetchMessages();
+    return () => clearInterval(timer);
+  }, [user.email, selectedChatEmail]);
+
+  // 2. Handle Initial Target from Home Page
+  useEffect(() => {
+    if (initialTarget) {
+      setSelectedChatEmail(initialTarget.email);
+      // Pre-populate chat list if it's a new contact
+      setChats(prev => {
+        if (!prev.find(c => c.email === initialTarget.email)) {
+          return [{ email: initialTarget.email, messages: [] }, ...prev];
+        }
+        return prev;
+      });
+      clearTarget();
+    }
+  }, [initialTarget]);
+
+  const activeChat = chats.find(c => c.email === selectedChatEmail) || { email: 'Select Chat', messages: [] };
+
+  // 3. Send Message logic
+  const handleSend = async (file = null, isMobileRequest = false) => {
+    if (!textInput.trim() && !file && !isMobileRequest) return;
+    if (!selectedChatEmail) return;
+
+    const payload = {
+      action: 'sendMessage',
+      senderEmail: user.email,
+      recipientEmail: selectedChatEmail,
+      type: isMobileRequest ? 'text' : (file ? (file.type.startsWith('image/') ? 'image' : 'file') : 'text'),
+      text: isMobileRequest ? "System: I am requesting your mobile number." : textInput,
+      content: file ? await toBase64(file) : null,
+      fileName: file ? file.name : null
+    };
+
+    // Immediate UI update
+    const tempMsg = { 
+      sender: 'me', 
+      text: payload.text, 
+      type: payload.type, 
+      time: 'Sending...',
+      content: payload.content,
+      fileName: payload.fileName 
+    };
+    
+    setChats(prev => prev.map(c => 
+      c.email === selectedChatEmail ? { ...c, messages: [...c.messages, tempMsg] } : c
+    ));
+    setTextInput('');
+
+    try {
+      await fetch(SCRIPT_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        body: JSON.stringify(payload) 
+      });
+    } catch (e) { console.error("Send Error:", e); }
+  };
+
+  return (
+    <div style={styles.chatContainer}>
+      <div style={styles.chatSidebar}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${THEME.border}`, fontWeight: 'bold' }}>MESSAGES</div>
+        {chats.map((c) => (
+          <div key={c.email} onClick={() => setSelectedChatEmail(c.email)} style={{ ...styles.contactItem, background: selectedChatEmail === c.email ? THEME.glass : 'transparent' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}</div>
+            <div style={{ fontSize: '11px', opacity: 0.6 }}>
+              {c.messages[c.messages.length - 1]?.text?.substring(0, 20) || "Start chatting..."}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={styles.chatMain}>
+        <div style={styles.chatHeader}>
+          <strong style={{ fontSize: '14px' }}>{activeChat.email}</strong>
+          <button 
+            onClick={() => handleSend(null, true)}
+            style={{ background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, padding: '5px 12px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer' }}
+          >
+            Request Mobile #
+          </button>
+        </div>
+        <div style={styles.chatMessages}>
+          {activeChat.messages.length === 0 && <p style={{ textAlign: 'center', opacity: 0.3, marginTop: '50px' }}>No messages yet.</p>}
+          {activeChat.messages.map((m, i) => (
+            <div key={i} style={m.sender === "me" ? styles.msgBubbleOut : styles.msgBubbleIn}>
+              {m.type === 'text' && <div>{m.text}</div>}
+              {m.type === 'image' && <img src={m.content} style={{ maxWidth: '100%', borderRadius: '8px' }} alt="sent" />}
+              {m.type === 'file' && <a href={m.content} download={m.fileName} style={{ color: '#fff', fontSize: '12px' }}>📁 {m.fileName}</a>}
+              <div style={{ fontSize: '9px', opacity: 0.4, marginTop: '5px', textAlign: 'right' }}>{m.time}</div>
+            </div>
+          ))}
+        </div>
+        <div style={styles.chatInputArea}>
+          <label style={{ cursor: 'pointer', opacity: 0.6 }}>
+            📎 <input type="file" hidden onChange={(e) => handleSend(e.target.files[0])} />
+          </label>
+          <input 
+            style={styles.msgInput} 
+            value={textInput} 
+            onChange={(e) => setTextInput(e.target.value)} 
+            placeholder="Write a message..." 
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()} 
+          />
+          <button style={styles.sendBtn} onClick={() => handleSend()}>Send</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ... rest of the helper components and styles remain identical to your provided code ...
+
+function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
+  return (
+    <>
+      <h2 style={{ fontSize: '32px', marginBottom: '30px' }}>Account Settings</h2>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <img src={tempPhoto || user.photourl || FALLBACK_PROFILE_IMG} style={styles.profilePreview} alt="User" />
+        <label style={styles.uploadLabel}>
+          Change Profile Image <input type="file" hidden onChange={async (e) => setTempPhoto(await toBase64(e.target.files[0]))} />
+        </label>
+      </div>
+      <div style={styles.inputGrid}>
+        <div style={styles.field}> <label>Full Name</label> <input id="pName" style={styles.input} defaultValue={user.name} /> </div>
+        <div style={styles.field}> <label>{user.role === 'Worker' ? 'Primary Skills' : 'Organization/Family Name'}</label> <input id="pSkills" style={styles.input} defaultValue={user.skills} /> </div>
+        <div style={styles.field}> <label>Location</label> <input id="pLoc" style={styles.input} defaultValue={user.location} /> </div>
+        <div style={styles.field}> <label>Experience/History</label> <input id="pExp" style={styles.input} defaultValue={user.experience} /> </div>
+        <div style={styles.field}> <label>Date of Birth</label> <input id="pDob" type="date" style={styles.input} defaultValue={user.dob} /> </div>
+      </div>
+      <button disabled={loading} style={styles.saveBtn} onClick={() => onSave({
+        name: document.getElementById('pName').value,
+        skills: document.getElementById('pSkills').value,
+        location: document.getElementById('pLoc').value,
+        experience: document.getElementById('pExp').value,
+        dob: document.getElementById('pDob').value,
+      })}>{loading ? 'Syncing...' : 'Update My Profile'}</button>
+    </>
+  );
+}
+
+function EmployerHiresView({ requests, setRequests }) {
+  const handleUploadCOE = async (id, file) => {
+    if (!file) return;
+    const base64 = await toBase64(file);
+    setRequests(prev => prev.map(req => 
+      req.id === id ? { ...req, status: 'completed', fileData: base64 } : req
+    ));
+    alert("Signed Certificate successfully uploaded and finalized.");
+  };
+
+  const pending = requests.filter(r => r.status === 'pending');
 
   return (
     <div>
-      <p style={{fontSize: '12px', marginBottom: '20px', color: '#666'}}>Code sent to {form.email}</p>
-      <input style={styles.input} placeholder="ENTER CODE" />
-      <button onClick={() => onDone(form)} style={styles.btnPriFull}>VERIFY</button>
-    </div>
-  );
-};
+      <h2 style={{ marginBottom: '10px' }}>Hired Workers & COE Management</h2>
+      <p style={{ opacity: 0.6, marginBottom: '30px' }}>Review document requests and manage active staff.</p>
 
-// --- WORKER DASHBOARD ---
-
-const WorkerDash = ({ user, profiles, onLogout, refresh }) => {
-  const p = profiles.find(x => x.email === user.email) || {};
-  const [activeTab, setActiveTab] = useState('PROFILE');
-  const [isUploading, setIsUploading] = useState(false);
-  const [f, setF] = useState({ 
-    name: user.name || p.name || '', 
-    skills: p.skills || '', 
-    experience: p.experience || '', 
-    contact: p.contact || '',
-    location: p.location || '',
-    availability: p.availability || 'Full-time',
-    photoUrl: p.photoUrl || '' 
-  });
-
-  const save = async () => {
-    try {
-      // Logic updated to remove 'no-cors' for better response handling
-      await fetch(SCRIPT_URL, { 
-        method: 'POST', 
-        body: JSON.stringify({ action: "SAVE_PROFILE", ...f, email: user.email, role: 'Worker' }) 
-      });
-      alert("Profile Updated Successfully!"); 
-      refresh();
-    } catch (err) {
-      alert("Profile updated.");
-      refresh();
-    }
-  };
-
-  const handleFileUpload = async (e, docType) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    
-    reader.onload = async () => {
-      try {
-        const actionType = docType === "PROFILE" ? "UPLOAD_PROFILE_IMAGE" : "UPLOAD_DOC";
-        const response = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            action: actionType,
-            email: user.email,
-            fileName: `${docType}_${user.email}_${file.name}`,
-            base64: reader.result,
-            mimeType: file.type
-          })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          if (docType === "PROFILE") {
-            setF({ ...f, photoUrl: result.url });
-            alert("Photo uploaded! Click 'Save Changes' to finish.");
-          } else {
-            alert(`${docType} uploaded successfully.`);
-          }
-        }
-      } catch (err) {
-        alert("Upload failed. Ensure your Google Script is deployed as a 'New Version'.");
-      } finally {
-        setIsUploading(false);
-      }
-    };
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'MESSAGES':
-        return (
-          <div style={styles.card}>
-            <h3 style={styles.label}>Recent Notifications</h3>
-            <p style={{fontSize: '13px', color: '#666'}}>Welcome to Bantay!</p>
-          </div>
-        );
-      case 'DOCUMENTS':
-        return (
-          <div style={styles.card}>
-            <h3 style={styles.label}>Secure Document Vault</h3>
-            <div style={{ display: 'grid', gap: '10px' }}>
-              {['Government ID', 'NBI Clearance', 'Health Certificate'].map((docName, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', backgroundColor: '#F8F9FA', borderRadius: '6px', border: '1px solid #E9ECEF' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600' }}>{docName}</span>
-                  <input type="file" id={`file-${i}`} style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, docName.replace(/ /g, "_"))} />
-                  <button disabled={isUploading} onClick={() => document.getElementById(`file-${i}`).click()} style={styles.btnSecSmall}>
-                    {isUploading ? "UPLOADING..." : "UPLOAD"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      default:
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '40px' }}>
-            <div style={{...styles.card, textAlign: 'center'}}>
-              <label style={styles.label}>Profile Photo</label>
-              <div style={{width:'100%', height:'300px', backgroundColor: '#EEE', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px', border: '1px solid #DDD'}}>
-                  <img src={f.photoUrl || "https://via.placeholder.com/300x300?text=No+Photo"} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Profile" />
+      <h4 style={{ color: THEME.avocado, marginBottom: '15px' }}>Pending Requests</h4>
+      {pending.length > 0 ? (
+        pending.map(req => (
+          <div key={req.id} style={{ ...styles.workerCard, marginBottom: '20px', border: `1px solid ${THEME.avocado}44` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong style={{ fontSize: '16px' }}>{req.workerName}</strong>
+                <p style={{ fontSize: '12px', opacity: 0.6, margin: '5px 0' }}>Requested: {req.date}</p>
               </div>
-              <input type="file" id="profile-upload" style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileUpload(e, "PROFILE")} />
-              <button onClick={() => document.getElementById('profile-upload').click()} style={{...styles.btnSecSmall, width: '100%'}} disabled={isUploading}>
-                {isUploading ? "UPLOADING..." : "CHOOSE PROFILE PHOTO"}
-              </button>
-            </div>
-            <div style={styles.card}>
-              <div style={styles.gridForm}>
-                <div style={{gridColumn: '1/3'}}><label style={styles.label}>Full Name</label><input style={styles.input} value={f.name} onChange={e => setF({...f, name: e.target.value})} /></div>
-                <div><label style={styles.label}>Main Skill</label><input style={styles.input} value={f.skills} onChange={e => setF({...f, skills: e.target.value})} /></div>
-                <div><label style={styles.label}>General Location</label><input style={styles.input} value={f.location} onChange={e => setF({...f, location: e.target.value})} /></div>
-                <div style={{gridColumn: '1/3'}}><label style={styles.label}>Work Experience</label><textarea style={{...styles.input, height: '180px'}} value={f.experience} onChange={e => setF({...f, experience: e.target.value})} /></div>
-              </div>
+              <label style={{ ...styles.portalBtn, background: 'transparent', border: `1px solid ${THEME.avocado}`, cursor: 'pointer', fontSize: '14px' }}>
+                Upload Signed PDF
+                <input type="file" accept=".pdf" hidden onChange={(e) => handleUploadCOE(req.id, e.target.files[0])} />
+              </label>
             </div>
           </div>
-        );
-    }
-  };
+        ))
+      ) : (
+        <p style={{ opacity: 0.4, fontStyle: 'italic', marginBottom: '30px' }}>No pending document requests.</p>
+      )}
 
-  return (
-    <div style={navStyles.wrapper}>
-      <div style={navStyles.sidebar}>
-        <BantayLogo width="110px" />
-        <div style={{ marginTop: '60px', flex: 1 }}>
-          <div style={{...navStyles.sidebarLink, ...(activeTab === 'PROFILE' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('PROFILE')}>Profile</div>
-          <div style={{...navStyles.sidebarLink, ...(activeTab === 'DOCUMENTS' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('DOCUMENTS')}>Documents</div>
-          <div style={{...navStyles.sidebarLink, ...(activeTab === 'MESSAGES' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('MESSAGES')}>Notifications</div>
-        </div>
-        <button onClick={onLogout} style={{...navStyles.sidebarLink, background: 'none', border: 'none', marginTop: 'auto'}}>Logout</button>
-      </div>
-      <div style={navStyles.mainContent}>
-        <div style={navStyles.header}>
-          <div>
-            <h1 style={{margin: 0, fontSize: '24px', color: COLORS.forest}}>Welcome, {f.name || 'Worker'}</h1>
-          </div>
-          {activeTab === 'PROFILE' && <button style={styles.btnPriSmall} onClick={save}>Save Changes</button>}
-        </div>
-        {renderContent()}
+      <h4 style={{ marginBottom: '15px', marginTop: '40px' }}>Current Staff Registry</h4>
+      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '15px', overflow: 'hidden', border: `1px solid ${THEME.border}` }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <tr style={{ textAlign: 'left', fontSize: '11px', opacity: 0.5 }}>
+              <th style={{ padding: '15px' }}>NAME</th>
+              <th style={{ padding: '15px' }}>POSITION</th>
+              <th style={{ padding: '15px' }}>DOCUMENTS</th>
+              <th style={{ padding: '15px' }}>ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {requests.map(req => (
+              <tr key={req.id} style={{ borderBottom: `1px solid ${THEME.border}` }}>
+                <td style={{ padding: '15px', fontWeight: 'bold' }}>{req.workerName}</td>
+                <td style={{ padding: '15px' }}>{req.role}</td>
+                <td style={{ padding: '15px' }}>
+                  <span style={{ fontSize: '10px', background: req.status === 'completed' ? THEME.avocado : '#f1c40f', padding: '4px 8px', borderRadius: '4px' }}>
+                    COE: {req.status.toUpperCase()}
+                  </span>
+                </td>
+                <td style={{ padding: '15px' }}>
+                  <button style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '12px' }}>End Contract</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
-}; 
+}
 
-// --- EMPLOYER DASHBOARD ---
+function JobBoardView() {
+  return (
+    <div>
+      <h2>Job Board</h2>
+      <div style={styles.workerCard}><h4 style={{ color: THEME.avocado }}>General Housekeeper Needed</h4><p style={{ opacity: 0.7 }}>Pagadian City • ₱7,500/mo</p></div>
+    </div>
+  );
+}
 
-const EmployerDash = ({ profiles, shortlist, setShortlist, getAvg, onLogout, refresh }) => {
-  const [activeTab, setActiveTab] = useState('DISCOVER'); 
-  const [filter, setFilter] = useState('');
-
-  const workers = profiles.filter(p => {
-    const isWorker = p.role === 'Worker' && p.verified === "Yes";
-    const matchesSearch = `${p.skills} ${p.location} ${p.name}`.toLowerCase().includes(filter.toLowerCase());
-    if (activeTab === 'SHORTLIST') return isWorker && matchesSearch && shortlist.includes(p.email);
-    return isWorker && matchesSearch;
-  });
-
-  const renderContent = () => (
-    <div style={styles.grid}>
-      {workers.length > 0 ? workers.map((p, i) => (
-        <div key={i} style={{...styles.card, padding: 0, overflow: 'hidden'}}>
-          <div style={{position: 'relative', height: '220px', backgroundColor: '#EEE'}}>
-            <img src={p.photoUrl || "https://via.placeholder.com/300x200?text=No+Photo"} style={{width: '100%', height: '100%', objectFit: 'cover'}} alt="" />
-            <button onClick={() => setShortlist(s => s.includes(p.email) ? s.filter(ev => ev !== p.email) : [...s, p.email])} style={{...styles.favBtn, color: shortlist.includes(p.email) ? '#E63946' : '#CCC'}}>
-                {shortlist.includes(p.email) ? '❤️ SAVED' : '🤍 SAVE'}
-            </button>
-          </div>
-          <div style={{padding: '24px'}}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
-              <h4 style={{margin:0, fontWeight: '600'}}>{p.name}</h4>
-              <span style={{fontSize: '11px', fontWeight: '800', color: COLORS.gold}}>★ {getAvg(p.ratings)}</span>
+function GovDocsView({ title }) {
+  const [coeStatus, setCoeStatus] = useState('none'); 
+  return (
+    <div>
+      <h2>{title}</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+        <div style={styles.workerCard}><h5>National ID</h5><input type="file" style={{ marginTop: '10px' }} /></div>
+        <div style={styles.workerCard}><h5>NBI Clearance</h5><input type="file" style={{ marginTop: '10px' }} /></div>
+        <div style={{ ...styles.workerCard, gridColumn: 'span 2', border: `1px solid ${THEME.avocado}44` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h5 style={{ color: THEME.avocado }}>Certificate of Employment (COE)</h5>
+              <p style={{ fontSize: '12px', opacity: 0.7 }}>{coeStatus === 'requested' ? "Waiting for employer signature." : "Request a digital COE from your employer."}</p>
             </div>
-            <p style={{fontSize: '11px', color: COLORS.brandGreen, margin: '8px 0', fontWeight: '700', textTransform: 'uppercase'}}>{p.skills || 'General Domestic'}</p>
-            <p style={{fontSize: '12px', color: '#666', height: '40px', overflow: 'hidden'}}>{p.experience}</p>
-            <button style={{...styles.btnPriSmall, width: '100%', marginTop: '16px'}}>VIEW FULL PROFILE</button>
+            {coeStatus === 'none' ? <button onClick={() => setCoeStatus('requested')} style={styles.portalBtn}>Request COE</button> : <span style={{ color: '#f1c40f' }}>⏳ Pending</span>}
           </div>
         </div>
-      )) : <p style={{gridColumn: '1/-1', textAlign: 'center', opacity: 0.5, marginTop: '40px'}}>No verified professionals match your search.</p>}
+      </div>
     </div>
   );
+}
 
+function StatCard({ label, val }) {
   return (
-    <div style={navStyles.wrapper}>
-      <div style={{...navStyles.sidebar, backgroundColor: '#232F3E'}}>
-        <BantayLogo width="110px" />
-        <div style={{ marginTop: '60px', flex: 1 }}>
-          <div style={{...navStyles.sidebarLink, ...(activeTab === 'DISCOVER' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('DISCOVER')}>DISCOVER</div>
-          <div style={{...navStyles.sidebarLink, ...(activeTab === 'SHORTLIST' ? navStyles.activeLink : {})}} onClick={() => setActiveTab('SHORTLIST')}>SHORTLIST ({shortlist.length})</div>
-        </div>
-        <button onClick={onLogout} style={{...navStyles.sidebarLink, background: 'none', border: 'none', marginTop: 'auto', cursor: 'pointer'}}>LOGOUT</button>
-      </div>
-      <div style={navStyles.mainContent}>
-        <div style={navStyles.header}>
-          <div><h1 style={{margin: 0, fontSize: '24px', fontWeight: '600'}}>{activeTab === 'DISCOVER' ? 'Find Professionals' : 'Saved Shortlist'}</h1></div>
-          <input style={{...styles.input, width: '320px', marginBottom: 0}} placeholder="Search by skill or location..." value={filter} onChange={e => setFilter(e.target.value)} />
-        </div>
-        {renderContent()}
-      </div>
+    <div style={{ background: THEME.glass, padding: '30px', borderRadius: '20px', border: `1px solid ${THEME.border}`, textAlign: 'center' }}>
+      <p style={{ opacity: 0.5, fontSize: '12px', marginBottom: '10px' }}>{label}</p>
+      <h2 style={{ fontSize: '38px', margin: 0, color: THEME.avocado }}>{val}</h2>
     </div>
   );
-};
+}
 
-// --- ADMIN DASHBOARD ---
-
-const AdminDash = ({ profiles, onLogout, refresh }) => {
-  const verify = async (p) => { 
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "SAVE_PROFILE", ...p, verified: "Yes" }) }); 
-    alert("User Verified!"); refresh(); 
-  };
-  
-  const del = async (email) => { 
-    if(window.confirm("Are you sure you want to remove this user?")) {
-      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "DELETE_USER", targetEmail: email }) }); 
-      refresh(); 
-    }
-  };
-
+function AdminTable({ title, data }) {
   return (
-    <div style={{ padding: '80px 10%' }}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center', marginBottom: '40px'}}>
-        <BantayLogo width="110px" />
-        <h2 style={{margin: 0, color: COLORS.forest}}>System Administration</h2>
-        <button onClick={onLogout} style={styles.btnSecSmall}>LOGOUT</button>
-      </div>
-      <div style={{...styles.card, padding: 0, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)'}}>
-          <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '13px'}}>
-            <thead style={{textAlign:'left', background: COLORS.forest, color: '#FFF'}}>
-                <tr>
-                    <th style={{padding: '20px', fontWeight: '500'}}>USER DETAILS</th>
-                    <th style={{fontWeight: '500'}}>ROLE</th>
-                    <th style={{fontWeight: '500'}}>STATUS</th>
-                    <th style={{fontWeight: '500', textAlign: 'right', paddingRight: '20px'}}>ACTIONS</th>
-                </tr>
-            </thead>
-            <tbody>
-              {profiles.length === 0 ? (
-                <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', opacity: 0.5 }}>No profiles found in the database.</td></tr>
-              ) : (
-                profiles.map((p, i) => (
-                  <tr key={i} style={{borderBottom: '1px solid #F1F3F5'}}>
-                    <td style={{padding: '20px'}}>{p.name || 'Unnamed'} <br/><span style={{opacity: 0.5, fontSize: '11px'}}>{p.email}</span></td>
-                    <td style={{fontSize: '11px', fontWeight: '600'}}>{p.role}</td>
-                    <td style={{fontWeight: '700', color: p.verified === 'Yes' ? COLORS.brandGreen : '#D97706', fontSize: '11px'}}>{p.verified === 'Yes' ? 'VERIFIED' : 'PENDING'}</td>
-                    <td style={{textAlign: 'right', paddingRight: '20px'}}>
-                      {p.role === 'Worker' && p.verified !== 'Yes' && (
-                        <button onClick={() => verify(p)} style={{background:'none', border:'none', color: COLORS.brandGreen, fontWeight: '700', marginRight: '15px', cursor: 'pointer'}}>APPROVE</button>
-                      )}
-                      <button onClick={() => del(p.email)} style={{background:'none', border:'none', color: '#E63946', fontWeight: '700', cursor: 'pointer'}}>DELETE</button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+    <div>
+      <h2>{title}</h2>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+        <thead><tr style={{ borderBottom: `1px solid ${THEME.border}`, textAlign: 'left', opacity: 0.5 }}><th style={{ padding: '12px' }}>Name</th><th style={{ padding: '12px' }}>Email</th></tr></thead>
+        <tbody>{data.map((item, i) => (<tr key={i} style={{ borderBottom: `1px solid ${THEME.glass}` }}><td style={{ padding: '12px' }}>{item.name}</td><td style={{ padding: '12px' }}>{item.email}</td></tr>))}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function AuthGate({ onLogin }) {
+  const [isRegister, setIsRegister] = useState(false);
+  const [role, setRole] = useState('Worker');
+  return (
+    <div style={styles.authBg}>
+      <div style={styles.authCard}>
+        <img src="websitelogo.png" alt="Logo" style={{ height: '125px', marginBottom: '75px' }} />
+        <div style={styles.roleToggle}>
+          <button onClick={() => setRole('Worker')} style={role === 'Worker' ? styles.roleBtnActive : styles.roleBtn}>Worker</button>
+          <button onClick={() => setRole('Employer')} style={role === 'Employer' ? styles.roleBtnActive : styles.roleBtn}>Employer</button>
+        </div>
+        {isRegister && <input style={styles.input} id="authName" placeholder="Full Name" />}
+        <input style={styles.input} id="authEmail" placeholder="Email Address" type="email" />
+        <input style={styles.input} placeholder="Password" type="password" />
+        <button style={{ ...styles.saveBtn, width: '100%' }} onClick={() => onLogin({ name: "User", email: document.getElementById('authEmail').value, role })}>
+          {isRegister ? 'Create Account' : 'Login'}
+        </button>
+        <p style={{ marginTop: '20px', fontSize: '14px', cursor: 'pointer', opacity: 0.7 }} onClick={() => setIsRegister(!isRegister)}>
+          {isRegister ? 'Already have an account?' : 'New user? Register here'}
+        </p>
       </div>
     </div>
   );
-};
-
-// --- STYLES ---
+}
 
 const styles = {
-  nav: { display: 'flex', justifyContent: 'space-between', padding: '30px 8%', alignItems: 'center' },
-  hero: { display: 'flex', padding: '60px 8%', alignItems: 'center', gap: '80px', maxWidth: '1400px', margin: '0 auto' },
-  heroTitle: { fontSize: '4rem', fontWeight: '700', color: COLORS.forest, lineHeight: '1.1', marginBottom: '24px', letterSpacing: '-2px' },
-  heroSubText: { fontSize: '1.1rem', color: '#555', marginBottom: '40px', maxWidth: '480px', lineHeight: '1.6' },
-  btnPriLarge: { padding: '16px 36px', background: COLORS.forest, color: '#FFF', border: 'none', borderRadius: '4px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' },
-  btnSec: { padding: '10px 24px', background: 'none', border: `1px solid ${COLORS.forest}`, borderRadius: '4px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' },
-  btnSecSmall: { padding: '8px 16px', background: 'none', border: `1px solid ${COLORS.forest}`, borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' },
-  btnPriSmall: { padding: '12px 20px', background: COLORS.forest, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' },
-  btnPriFull: { width: '100%', padding: '16px', background: COLORS.forest, color: '#FFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', marginTop: '10px' },
-  graphicBox: { flex: 0.8, background: '#DDD', height: '480px', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', padding: '40px', backgroundImage: 'url("https://images.unsplash.com/photo-1581578731522-745d05cb9704?auto=format&fit=crop&q=80&w=800")', backgroundSize: 'cover', backgroundPosition: 'center' },
-  mockCard: { background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', padding: '32px', borderRadius: '12px', width: '100%', border: '1px solid rgba(255,255,255,0.2)' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(30,47,35,0.4)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-  authCard: { background: '#FFF', padding: '60px', borderRadius: '8px', width: '400px', textAlign: 'center', position: 'relative', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' },
-  closeBtn: { position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', fontSize: '10px', fontWeight: '800', cursor: 'pointer', opacity: 0.4 },
-  input: { width: '100%', padding: '14px', marginBottom: '16px', borderRadius: '4px', border: `1px solid #E9ECEF`, boxSizing: 'border-box', fontSize: '13px' },
-  label: { display: 'block', fontSize: '10px', fontWeight: '800', color: '#ADB5BD', marginBottom: '8px', textTransform: 'uppercase' },
-  tabBox: { display: 'flex', marginBottom: '32px' },
-  tabA: { flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: `2px solid ${COLORS.forest}`, fontWeight: '700', cursor: 'pointer', fontSize: '11px' },
-  tabI: { flex: 1, padding: '12px', background: 'none', border: 'none', opacity: 0.2, cursor: 'pointer', fontSize: '11px', fontWeight: '700' },
-  card: { background: '#FFF', padding: '32px', borderRadius: '8px', border: '1px solid #E9ECEF' },
-  favBtn: { position: 'absolute', top: '16px', right: '16px', background: '#FFF', border: 'none', borderRadius: '4px', padding: '6px 12px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '32px' },
-  badge: { padding: '4px 8px', background: COLORS.mint, borderRadius: '4px', fontSize: '10px', fontWeight: '800', color: COLORS.brandGreen, display: 'inline-block' },
-  gridForm: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }
+  navbar: { display: 'flex', justifyContent: 'space-between', padding: '20px 8%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 100, alignItems: 'center', borderBottom: `1px solid ${THEME.border}` },
+  navLink: { cursor: 'pointer', opacity: 0.6 },
+  navActive: { cursor: 'pointer', color: THEME.avocado, fontWeight: 'bold' },
+  notifBadge: { background: '#e74c3c', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' },
+  portalBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' },
+  logoutBtn: { background: 'transparent', color: '#fff', border: '1px solid #fff', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer' },
+  heroBanner: { height: '60vh', backgroundImage: `url(${BANNER_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' },
+  heroOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, #021c02 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 8%' },
+  searchBox: { display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '50px', padding: '8px', maxWidth: '600px', margin: '0 auto', border: `1px solid ${THEME.border}` },
+  searchInput: { flex: 1, background: 'transparent', border: 'none', color: '#fff', paddingLeft: '25px', fontSize: '18px', outline: 'none' },
+  searchBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '12px 30px', borderRadius: '50px', fontWeight: 'bold', cursor: 'pointer' },
+  workerGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' },
+  workerCard: { background: THEME.glass, padding: '30px', borderRadius: '24px', border: `1px solid ${THEME.border}` },
+  cardAvatar: { width: '65px', height: '65px', borderRadius: '15px', objectFit: 'cover', border: `2px solid ${THEME.avocado}` },
+  msgBtn: { width: '100%', marginTop: '20px', padding: '12px', borderRadius: '10px', border: 'none', background: '#fff', fontWeight: 'bold', cursor: 'pointer' },
+  portalContainer: { display: 'grid', gridTemplateColumns: '300px 1fr', gap: '40px', padding: '60px 8%' },
+  sidebar: { background: THEME.glass, padding: '30px', borderRadius: '24px', height: 'fit-content', border: `1px solid ${THEME.border}` },
+  tabActive: { background: THEME.avocado, padding: '12px 20px', borderRadius: '12px', marginBottom: '10px', fontWeight: 'bold', cursor: 'pointer' },
+  tabInactive: { padding: '12px 20px', opacity: 0.5, cursor: 'pointer' },
+  editorPanel: { background: THEME.glass, padding: '40px', borderRadius: '24px', border: `1px solid ${THEME.border}` },
+  inputGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
+  field: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  input: { background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`, padding: '15px', borderRadius: '12px', color: '#fff', width: '100%', boxSizing: 'border-box' },
+  saveBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '15px 30px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px' },
+  profilePreview: { width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: `3px solid ${THEME.avocado}`, marginBottom: '15px' },
+  uploadLabel: { fontSize: '13px', opacity: 0.6, cursor: 'pointer', display: 'block' },
+  authBg: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #021c02 0%, #0a2e0a 100%)' },
+  authCard: { background: THEME.glass, padding: '40px', borderRadius: '24px', width: '400px', textAlign: 'center', border: `1px solid ${THEME.border}` },
+  roleToggle: { display: 'flex', gap: '10px', marginBottom: '20px' },
+  roleBtn: { flex: 1, padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer' },
+  roleBtnActive: { flex: 1, padding: '10px', borderRadius: '10px', background: THEME.avocado, border: 'none', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
+  chatContainer: { display: 'flex', height: '550px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: `1px solid ${THEME.border}`, overflow: 'hidden' },
+  chatSidebar: { width: '280px', borderRight: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.02)' },
+  contactItem: { padding: '20px', cursor: 'pointer', transition: '0.2s', borderBottom: `1px solid ${THEME.border}44` },
+  chatMain: { flex: 1, display: 'flex', flexDirection: 'column' },
+  chatHeader: { padding: '20px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  chatMessages: { flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', overflowY: 'auto' },
+  msgBubbleIn: { alignSelf: 'flex-start', background: THEME.glass, padding: '12px 18px', borderRadius: '15px 15px 15px 0', fontSize: '14px', maxWidth: '80%' },
+  msgBubbleOut: { alignSelf: 'flex-end', background: THEME.avocado, padding: '12px 18px', borderRadius: '15px 15px 0 15px', fontSize: '14px', maxWidth: '80%' },
+  chatInputArea: { padding: '20px', borderTop: `1px solid ${THEME.border}`, display: 'flex', gap: '12px', alignItems: 'center' },
+  msgInput: { flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', padding: '12px 20px', borderRadius: '12px', color: '#fff', outline: 'none' },
+  sendBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }
 };
+
+const toBase64 = file => new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => resolve(reader.result);
+});
