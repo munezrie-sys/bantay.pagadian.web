@@ -11,7 +11,13 @@ const THEME = {
   white: '#FFFFFF',
   black: '#021c02',
   border: 'rgba(255, 255, 255, 0.1)',
-  glass: 'rgba(255, 255, 255, 0.05)'
+  glass: 'rgba(255, 255, 255, 0.05)',
+  status: {
+    available: '#99ff00',
+    unemployed: '#99ff00',
+    working: '#ffcc00',
+    employed: '#888888'
+  }
 };
 
 const toBase64 = file => new Promise((resolve, reject) => {
@@ -20,6 +26,47 @@ const toBase64 = file => new Promise((resolve, reject) => {
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
 });
+
+const styles = {
+  navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 8%', borderBottom: `1px solid ${THEME.border}`, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 100 },
+  navLink: { opacity: 0.6, cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+  navActive: { color: THEME.avocado, cursor: 'pointer', fontSize: '14px', fontWeight: '700' },
+  portalBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
+  logoutBtn: { background: 'transparent', color: '#fff', border: `1px solid ${THEME.border}`, padding: '8px 15px', borderRadius: '8px', cursor: 'pointer' },
+  portalContainer: { display: 'flex', minHeight: 'calc(100vh - 80px)' },
+  sidebar: { width: '280px', borderRight: `1px solid ${THEME.border}`, padding: '40px 30px' },
+  tabActive: { padding: '12px 20px', background: THEME.glass, borderRadius: '10px', color: THEME.avocado, fontWeight: 'bold', marginBottom: '10px', cursor: 'pointer' },
+  tabInactive: { padding: '12px 20px', opacity: 0.4, marginBottom: '10px', cursor: 'pointer' },
+  editorPanel: { flex: 1, padding: '60px 8%', overflowY: 'auto' },
+  workerCard: { background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`, borderRadius: '15px', padding: '20px' },
+  heroBanner: { height: '400px', backgroundImage: `url(${BANNER_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' },
+  heroOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(2,28,2,0.4), #021c02)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 8%' },
+  searchBox: { background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '15px', display: 'flex', gap: '10px', border: `1px solid ${THEME.border}`, backdropFilter: 'blur(20px)', marginBottom: '40px' },
+  searchInput: { flex: 1, background: 'transparent', border: 'none', color: '#fff', padding: '15px', fontSize: '16px', outline: 'none' },
+  searchBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '0 30px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' },
+  workerGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' },
+  cardAvatar: { width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${THEME.avocado}` },
+  msgBtn: { width: '100%', marginTop: '20px', padding: '12px', borderRadius: '10px', background: THEME.glass, border: `1px solid ${THEME.border}`, color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
+  chatContainer: { display: 'flex', height: '70vh', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', overflow: 'hidden', border: `1px solid ${THEME.border}` },
+  chatSidebar: { width: '300px', borderRight: `1px solid ${THEME.border}` },
+  contactItem: { padding: '15px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer' },
+  chatMain: { flex: 1, display: 'flex', flexDirection: 'column' },
+  chatHeader: { padding: '20px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  chatMessages: { flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' },
+  msgBubbleIn: { alignSelf: 'flex-start', background: THEME.glass, padding: '12px 18px', borderRadius: '15px 15px 15px 0', maxWidth: '70%', fontSize: '14px' },
+  msgBubbleOut: { alignSelf: 'flex-end', background: THEME.avocado, padding: '12px 18px', borderRadius: '15px 15px 0 15px', maxWidth: '70%', fontSize: '14px' },
+  chatInputArea: { padding: '20px', borderTop: `1px solid ${THEME.border}`, display: 'flex', gap: '10px' },
+  msgInput: { flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '10px', padding: '12px', color: '#fff', outline: 'none' },
+  sendBtn: { background: THEME.avocado, border: 'none', padding: '0 20px', borderRadius: '10px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
+  requestBtn: { background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' },
+  profilePreview: { width: '150px', height: '150px', borderRadius: '20px', objectFit: 'cover', border: `3px solid ${THEME.avocado}`, marginBottom: '15px' },
+  uploadLabel: { fontSize: '12px', color: THEME.avocado, cursor: 'pointer', textDecoration: 'underline' },
+  inputGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
+  field: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  input: { background: 'rgba(255,255,255,0.05)', border: `1px solid ${THEME.border}`, padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none' },
+  saveBtn: { marginTop: '30px', padding: '15px 40px', background: THEME.avocado, border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
+  notifBadge: { background: '#e74c3c', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '10px', position: 'relative', top: '-10px', left: '-10px' }
+};
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -79,7 +126,6 @@ export default function App() {
   };
 
   const handleAcceptJob = (employerEmail) => {
-    // Check if an entry already exists for this worker and this employer
     const alreadyExists = coeRequests.some(req => 
       req.workerEmail === user.email && req.employerEmail === employerEmail
     );
@@ -103,35 +149,35 @@ export default function App() {
     alert("Job offer accepted! You are now listed in the employer's active staff list.");
   };
 
-const handleUpdateProfile = async (profileData) => {
-  setLoading(true);
-  const finalPhoto = tempPhoto || user.photourl;
-  
-  const updatedRecord = { 
-    ...profileData, 
-    photourl: finalPhoto, 
-    email: user.email, 
-    role: user.role 
-  };
-  
-  setUser(updatedRecord);
-  setProfiles(prev => {
-    const exists = prev.find(p => p.email.toLowerCase() === user.email.toLowerCase());
-    if (exists) return prev.map(p => p.email.toLowerCase() === user.email.toLowerCase() ? updatedRecord : p);
-    return [updatedRecord, ...prev];
-  });
-
-  try {
-    await fetch(SCRIPT_URL, { 
-      method: 'POST', 
-      mode: 'no-cors', 
-      body: JSON.stringify({ action: 'updateProfile', ...updatedRecord }) 
+  const handleUpdateProfile = async (profileData) => {
+    setLoading(true);
+    const finalPhoto = tempPhoto || user.photourl;
+    
+    const updatedRecord = { 
+      ...profileData, 
+      photourl: finalPhoto, 
+      email: user.email, 
+      role: user.role 
+    };
+    
+    setUser(updatedRecord);
+    setProfiles(prev => {
+      const exists = prev.find(p => p.email.toLowerCase() === user.email.toLowerCase());
+      if (exists) return prev.map(p => p.email.toLowerCase() === user.email.toLowerCase() ? updatedRecord : p);
+      return [updatedRecord, ...prev];
     });
-    alert("Account data saved successfully!");
-    setView('Home'); 
-  } catch (e) { console.error("Sync Error:", e); }
-  setLoading(false);
-};
+
+    try {
+      await fetch(SCRIPT_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        body: JSON.stringify({ action: 'updateProfile', ...updatedRecord }) 
+      });
+      alert("Account data saved successfully!");
+      setView('Home'); 
+    } catch (e) { console.error("Sync Error:", e); }
+    setLoading(false);
+  };
 
   const handleLogout = () => {
     if(window.confirm("Are you sure you want to logout?")) {
@@ -224,18 +270,14 @@ const handleUpdateProfile = async (profileData) => {
                 <MessagingView user={user} coeRequests={coeRequests} initialTarget={activeMessagingTarget} clearTarget={() => setActiveMessagingTarget(null)} onAcceptJob={handleAcceptJob} />
               )}
 
-              {view === 'Portal' && user.role === 'Worker' && (
-                <>
-                  {portalTab === 'Jobs' && <JobBoardView />}
-                  {portalTab === 'GovDocs' && <GovDocsView title="Identity Verification" />}
-                </>
+              {view === 'Portal' && portalTab === 'GovDocs' && (
+                <GovDocsView user={user} coeRequests={coeRequests} title={user.role === 'Employer' ? "Employer Verification" : "Identity Verification"} />
               )}
 
-              {view === 'Portal' && user.role === 'Employer' && (
-                <>
-                  {portalTab === 'GovDocs' && <GovDocsView title="Employer Verification" />}
-                  {portalTab === 'HiredList' && <EmployerHiresView requests={coeRequests} setRequests={setCoeRequests} />}
-                </>
+              {view === 'Portal' && user.role === 'Worker' && portalTab === 'Jobs' && <JobBoardView />}
+
+              {view === 'Portal' && user.role === 'Employer' && portalTab === 'HiredList' && (
+                <EmployerHiresView requests={coeRequests} setRequests={setCoeRequests} user={user} />
               )}
             </section>
           </div>
@@ -256,6 +298,11 @@ function HomeView({ filteredWorkers, user, setSearchQuery, onStartMsg }) {
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     return age;
+  };
+
+  const getStatusStyle = (status) => {
+    const s = (status || 'available').toLowerCase();
+    return THEME.status[s] || THEME.status.available;
   };
 
   return (
@@ -289,6 +336,12 @@ function HomeView({ filteredWorkers, user, setSearchQuery, onStartMsg }) {
                 <p style={{ margin: '4px 0' }}><strong>Age:</strong> {getAge(w.dob)}</p>
                 <p style={{ margin: '4px 0' }}><strong>Location:</strong> {w.location || 'Pagadian City'}</p>
                 <p style={{ margin: '4px 0' }}><strong>Experience:</strong> {w.experience || 'Entry Level'}</p>
+                <p style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <strong>Status:</strong> 
+                    <span style={{ color: getStatusStyle(w.availability_status), fontWeight: 'bold', textTransform: 'capitalize' }}>
+                        ● {w.availability_status || 'Available'}
+                    </span>
+                </p>
               </div>
               <button style={styles.msgBtn} onClick={() => onStartMsg(w)}>Message Worker</button>
             </div>
@@ -436,7 +489,6 @@ function MessagingView({ user, coeRequests, initialTarget, clearTarget, onAccept
                      <div style={{ textAlign: 'center', padding: '5px' }}>
                         <p style={{ fontSize: '12px', margin: '0 0 8px 0' }}>💼 <strong>New Job Offer!</strong></p>
                         {m.sender === 'other' && user.role === 'Worker' ? (
-                          // Prevent duplicate button showing if already in coeRequests
                           !coeRequests.some(r => r.workerEmail === user.email && r.employerEmail === selectedChatEmail) ? (
                             <button onClick={() => onAcceptJob(selectedChatEmail)} style={{ background: THEME.avocado, border: 'none', color: '#fff', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>Accept Job</button>
                           ) : (
@@ -493,6 +545,7 @@ function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
       data.skills = document.getElementById('pSkills').value;
       data.location = document.getElementById('pLoc').value;
       data.experience = document.getElementById('pExp').value;
+      data.availability_status = document.getElementById('pStatus').value;
     } else {
       data.residence = document.getElementById('pRes').value;
       data.email_contact = document.getElementById('pEmailContact').value;
@@ -527,6 +580,15 @@ function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
                 <div style={styles.field}> <label>Main Skill</label> <input id="pSkills" style={styles.input} defaultValue={user.skills} /> </div>
                 <div style={styles.field}> <label>Current Location</label> <input id="pLoc" style={styles.input} defaultValue={user.location} /> </div>
                 <div style={styles.field}> <label>Experience (Years)</label> <input id="pExp" style={styles.input} defaultValue={user.experience} /> </div>
+                <div style={styles.field}> 
+                    <label>Availability Status</label> 
+                    <select id="pStatus" style={styles.input} defaultValue={user.availability_status || 'available'}>
+                        <option value="available">Available</option>
+                        <option value="unemployed">Unemployed</option>
+                        <option value="employed">Employed</option>
+                        <option value="working">Working</option>
+                    </select>
+                </div>
               </>
             ) : (
               <>
@@ -551,69 +613,189 @@ function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
   );
 }
 
-function EmployerHiresView({ requests, setRequests }) {
-  const handleUploadCOE = async (id, file) => {
-    if (!file) return;
-    const base64 = await toBase64(file);
-    setRequests(prev => prev.map(req => 
-      req.id === id ? { ...req, status: 'completed', fileData: base64 } : req
-    ));
-    alert("Signed Certificate successfully uploaded and finalized.");
-  };
+function GovDocsView({ user, coeRequests, title }) {
+  const myCoeRequest = coeRequests.find(r => r.workerEmail === user.email);
 
-  const pending = requests.filter(r => r.status === 'pending');
+  const handleDownloadSignedCOE = () => {
+    if (!myCoeRequest?.fileData) return;
+    const link = document.createElement("a");
+    link.href = myCoeRequest.fileData;
+    link.download = `Signed_COE_${user.name}.pdf`;
+    link.click();
+  };
 
   return (
     <div>
-      <h2 style={{ marginBottom: '10px' }}>Personnel Management</h2>
-      <p style={{ opacity: 0.6, marginBottom: '30px' }}>Review document requests and manage active staff contracts.</p>
-      <h4 style={{ color: THEME.avocado, marginBottom: '15px' }}>Document Requests</h4>
-      {pending.length > 0 ? (
-        pending.map(req => (
-          <div key={req.id} style={{ ...styles.workerCard, marginBottom: '20px', border: `1px solid ${THEME.avocado}44` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <strong style={{ fontSize: '16px' }}>{req.workerName}</strong>
-                <p style={{ fontSize: '12px', opacity: 0.6, margin: '5px 0' }}>Request Date: {req.date}</p>
+      <h2 style={{ fontSize: '32px', marginBottom: '10px' }}>{title}</h2>
+      <p style={{ opacity: 0.6, marginBottom: '30px' }}>Manage your legal requirements for profiling.</p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div style={styles.workerCard}>
+          <h4 style={{ color: THEME.avocado, marginBottom: '10px' }}>National ID / Driver's License</h4>
+          <input type="file" style={{ fontSize: '12px' }} />
+        </div>
+        <div style={styles.workerCard}>
+          <h4 style={{ color: THEME.avocado, marginBottom: '10px' }}>NBI / Police Clearance</h4>
+          <input type="file" style={{ fontSize: '12px' }} />
+        </div>
+      </div>
+
+      <div style={{ ...styles.workerCard, marginTop: '30px', border: `1px solid ${THEME.border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h4 style={{ color: THEME.avocado, margin: 0 }}>Certificate of Employment (COE)</h4>
+            <p style={{ opacity: 0.6, fontSize: '13px', marginTop: '5px' }}>
+              {myCoeRequest 
+                ? `Status: ${myCoeRequest.status.toUpperCase()}` 
+                : "Request a digital COE from your employer for your records."}
+            </p>
+          </div>
+
+          {!myCoeRequest && (
+            <button style={{...styles.portalBtn, opacity: 0.5}} disabled>
+              Request COE
+            </button>
+          )}
+
+          {myCoeRequest?.status === 'pending' && (
+            <button style={{ ...styles.portalBtn, background: '#f1c40f', color: '#000', cursor: 'default' }}>
+              Pending Approval
+            </button>
+          )}
+
+          {myCoeRequest?.status === 'completed' && (
+            <button style={{ ...styles.portalBtn, background: THEME.avocado }} onClick={handleDownloadSignedCOE}>
+              Download Signed COE
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --- Replace your existing EmployerHiresView with this updated version --- */
+
+function EmployerHiresView({ requests, setRequests, user }) {
+  
+  // NEW: Function to generate the interactive COE
+  const handlePrintCOE = (req) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    
+    const coeHtml = `
+      <html>
+        <head>
+          <title>COE - ${req.workerName}</title>
+          <style>
+            body { font-family: 'Times New Roman', serif; padding: 50px; line-height: 1.6; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #74ae08; padding-bottom: 20px; margin-bottom: 40px; }
+            .header h1 { margin: 0; color: #74ae08; text-transform: uppercase; letter-spacing: 2px; }
+            .date { text-align: right; margin-bottom: 30px; }
+            .content { margin-bottom: 50px; }
+            .editable { border-bottom: 1px dashed #74ae08; padding: 2px 5px; background: #f0f7e6; cursor: text; }
+            .signature-section { margin-top: 60px; display: flex; justify-content: space-between; }
+            .sig-box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px; }
+            @media print {
+              .no-print { display: none; }
+              .editable { border: none; background: transparent; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="no-print" style="background: #eef7de; padding: 15px; border: 1px solid #74ae08; margin-bottom: 20px; border-radius: 8px; font-family: sans-serif; font-size: 13px;">
+            <strong>BANTAY System Tip:</strong> You can click and edit the <span style="color:#74ae08; font-weight:bold;">green highlighted</span> text. 
+            Once finished, press <b>Ctrl + P</b> to save as PDF.
+          </div>
+
+          <div class="header">
+            <h1>BANTAY</h1>
+            <p>Domestic Worker Management & Profiling System</p>
+          </div>
+
+          <div class="date">Date: ${new Date().toLocaleDateString()}</div>
+
+          <div class="content">
+            <h2 style="text-align: center; text-decoration: underline;">CERTIFICATE OF EMPLOYMENT</h2>
+            <br/>
+            <p>To Whom It May Concern,</p>
+            <p>This is to certify that <strong>${req.workerName}</strong> has been employed by the undersigned in the capacity of 
+            <span class="editable" contenteditable="true">${req.role || 'Domestic Worker'}</span>.</p>
+            
+            <p>The period of employment commenced on <strong>${req.date}</strong> and continues to the present date.</p>
+            
+            <p>During this tenure, the employee has performed their duties with 
+            <span class="editable" contenteditable="true">reliability and professional conduct</span>.</p>
+            
+            <p>This certification is being issued upon the request of the aforementioned individual for 
+            <span class="editable" contenteditable="true">verification and profiling requirements</span>.</p>
+          </div>
+
+          <div class="signature-section">
+            <div>
+              <div class="sig-box">
+                <strong>${user.name}</strong><br/>
+                Employer Name
               </div>
-              <label style={{ ...styles.portalBtn, background: 'transparent', border: `1px solid ${THEME.avocado}`, cursor: 'pointer', fontSize: '14px' }}>
-                Sign & Upload COE
-                <input type="file" accept=".pdf" hidden onChange={(e) => handleUploadCOE(req.id, e.target.files[0])} />
+            </div>
+            <div>
+              <div class="sig-box">
+                Date Signed
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(coeHtml);
+    printWindow.document.close();
+  };
+
+  const handleFileUpload = async (id, file) => {
+    const base64 = await toBase64(file);
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, fileData: base64, status: 'verified' } : r));
+    alert("Signed COE uploaded and verified!");
+  };
+
+  return (
+    <div>
+      <h2 style={{ fontSize: '32px', marginBottom: '10px' }}>Hired Workers</h2>
+      <p style={{ opacity: 0.6, marginBottom: '30px' }}>Generate certificates and manage your active staff.</p>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        {requests.filter(r => r.employerEmail === user.email).map(req => (
+          <div key={req.id} style={{ ...styles.workerCard, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h4 style={{ margin: '0 0 5px 0' }}>{req.workerName}</h4>
+              <div style={{ display: 'flex', gap: '15px', fontSize: '12px', opacity: 0.6 }}>
+                <span>Hired: {req.date}</span>
+                <span>Role: {req.role}</span>
+              </div>
+              {/* Updated Button Call */}
+              <button 
+                onClick={() => handlePrintCOE(req)} 
+                style={{ background: 'none', border: 'none', color: THEME.avocado, padding: '10px 0 0 0', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}
+              >
+                Generate & Download COE
+              </button>
+            </div>
+            
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ marginBottom: '10px' }}>
+                <span style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '4px', background: req.status === 'verified' ? '#74ae0822' : '#ffcc0022', color: req.status === 'verified' ? THEME.avocado : '#ffcc00' }}>
+                  {req.status.toUpperCase()}
+                </span>
+              </div>
+              <label style={{ ...styles.uploadLabel, fontSize: '11px' }}>
+                {req.fileData ? 'Update Signed COE' : 'Upload Signed COE'}
+                <input type="file" hidden onChange={(e) => handleFileUpload(req.id, e.target.files[0])} />
               </label>
             </div>
           </div>
-        ))
-      ) : (
-        <p style={{ opacity: 0.4, fontStyle: 'italic', marginBottom: '30px' }}>No pending document requests.</p>
-      )}
-      <h4 style={{ marginBottom: '15px', marginTop: '40px' }}>Active Staff List</h4>
-      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '15px', overflow: 'hidden', border: `1px solid ${THEME.border}` }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <tr style={{ textAlign: 'left', fontSize: '11px', opacity: 0.5 }}>
-              <th style={{ padding: '15px' }}>NAME</th>
-              <th style={{ padding: '15px' }}>ROLE</th>
-              <th style={{ padding: '15px' }}>STATUS</th>
-              <th style={{ padding: '15px' }}>ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map(req => (
-              <tr key={req.id} style={{ borderBottom: `1px solid ${THEME.border}` }}>
-                <td style={{ padding: '15px', fontWeight: 'bold' }}>{req.workerName}</td>
-                <td style={{ padding: '15px' }}>{req.role}</td>
-                <td style={{ padding: '15px' }}>
-                  <span style={{ fontSize: '10px', background: req.status === 'completed' ? THEME.avocado : '#f1c40f', padding: '4px 8px', borderRadius: '4px' }}>
-                    COE: {req.status.toUpperCase()}
-                  </span>
-                </td>
-                <td style={{ padding: '15px' }}>
-                  <button style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '12px' }}>Terminate Contract</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        ))}
+        {requests.filter(r => r.employerEmail === user.email).length === 0 && (
+          <p style={{ opacity: 0.4, textAlign: 'center', padding: '40px' }}>No hired workers yet.</p>
+        )}
       </div>
     </div>
   );
@@ -627,34 +809,48 @@ function JobBoardView() {
       <div style={styles.workerCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-                <h4 style={{ color: THEME.avocado, margin: '0 0 5px 0' }}>General Housekeeper Needed</h4>
-                <p style={{ opacity: 0.7, margin: 0, fontSize: '14px' }}>Sta. Lucia, Pagadian City • ₱7,500/mo</p>
+                <h4 style={{ color: THEME.avocado, margin: '0 0 5px 0' }}>Professional Housekeeper Needed</h4>
+                <p style={{ fontSize: '12px', opacity: 0.6 }}>Full-time • Brgy. San Jose</p>
+                <p style={{ marginTop: '15px', fontSize: '14px' }}>Looking for a reliable housekeeper with at least 2 years of experience. Must be trustworthy and diligent.</p>
             </div>
-            <button style={{ ...styles.portalBtn, fontSize: '12px' }}>Apply Now</button>
+            <button style={styles.portalBtn}>Apply Now</button>
         </div>
       </div>
     </div>
   );
 }
 
-function GovDocsView({ title }) {
-  const [coeStatus, setCoeStatus] = useState('none'); 
+function AuthGate({ onLogin }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const handleAuth = (e) => {
+    e.preventDefault();
+    const data = {
+      email: e.target.email.value,
+      name: isLogin ? e.target.email.value.split('@')[0] : e.target.fullName.value,
+      role: isLogin ? 'Worker' : e.target.role.value 
+    };
+    onLogin(data);
+  };
+
   return (
-    <div>
-      <h2>{title}</h2>
-      <p style={{ opacity: 0.6 }}>Manage your legal requirements for profiling.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-        <div style={styles.workerCard}><h5>National ID / Driver's License</h5><input type="file" style={{ marginTop: '10px' }} /></div>
-        <div style={styles.workerCard}><h5>NBI / Police Clearance</h5><input type="file" style={{ marginTop: '10px' }} /></div>
-        <div style={{ ...styles.workerCard, gridColumn: 'span 2', border: `1px solid ${THEME.avocado}44` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h5 style={{ color: THEME.avocado }}>Certificate of Employment (COE)</h5>
-              <p style={{ fontSize: '12px', opacity: 0.7 }}>{coeStatus === 'requested' ? "Your employer has been notified." : "Request a digital COE from your employer for your records."}</p>
-            </div>
-            {coeStatus === 'none' ? <button onClick={() => setCoeStatus('requested')} style={styles.portalBtn}>Request COE</button> : <span style={{ color: '#f1c40f', fontWeight: 'bold' }}>⏳ Requested</span>}
-          </div>
-        </div>
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.black }}>
+      <div style={{ ...styles.workerCard, width: '400px', padding: '40px' }}>
+        <img src="websitelogo.png" alt="Logo" style={{ height: '60px', marginBottom: '30px', display: 'block', marginInline: 'auto' }} />
+        <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {!isLogin && <input name="fullName" placeholder="Full Name" required style={styles.input} />}
+          <input name="email" type="email" placeholder="Email Address" required style={styles.input} />
+          {!isLogin && (
+            <select name="role" style={styles.input}>
+              <option value="Worker">I am looking for Work</option>
+              <option value="Employer">I am looking to Hire</option>
+            </select>
+          )}
+          <button type="submit" style={{ ...styles.portalBtn, padding: '15px' }}>{isLogin ? 'Login' : 'Get Started'}</button>
+        </form>
+        <p style={{ textAlign: 'center', marginTop: '25px', opacity: 0.5, fontSize: '14px', cursor: 'pointer' }} onClick={() => setIsLogin(!isLogin)}>
+          {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
+        </p>
       </div>
     </div>
   );
@@ -662,9 +858,9 @@ function GovDocsView({ title }) {
 
 function StatCard({ label, val }) {
   return (
-    <div style={{ background: THEME.glass, padding: '30px', borderRadius: '20px', border: `1px solid ${THEME.border}`, textAlign: 'center' }}>
-      <p style={{ opacity: 0.5, fontSize: '12px', marginBottom: '10px', textTransform: 'uppercase' }}>{label}</p>
-      <h2 style={{ fontSize: '38px', margin: 0, color: THEME.avocado }}>{val}</h2>
+    <div style={styles.workerCard}>
+      <p style={{ opacity: 0.6, fontSize: '12px', margin: '0 0 10px 0' }}>{label}</p>
+      <h2 style={{ fontSize: '36px', color: THEME.avocado, margin: 0 }}>{val}</h2>
     </div>
   );
 }
@@ -672,83 +868,27 @@ function StatCard({ label, val }) {
 function AdminTable({ title, data }) {
   return (
     <div>
-      <h2>{title}</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-        <thead><tr style={{ borderBottom: `1px solid ${THEME.border}`, textAlign: 'left', opacity: 0.5 }}><th style={{ padding: '12px' }}>Name</th><th style={{ padding: '12px' }}>Email</th></tr></thead>
-        <tbody>{data.map((item, i) => (<tr key={i} style={{ borderBottom: `1px solid ${THEME.glass}` }}><td style={{ padding: '12px' }}>{item.name}</td><td style={{ padding: '12px' }}>{item.email}</td></tr>))}</tbody>
-      </table>
-    </div>
-  );
-}
-
-function AuthGate({ onLogin }) {
-  const [isRegister, setIsRegister] = useState(false);
-  const [role, setRole] = useState('Worker');
-  return (
-    <div style={styles.authBg}>
-      <div style={styles.authCard}>
-        <img src="websitelogo.png" alt="Logo" style={{ height: '125px', marginBottom: '40px' }} />
-        <h2 style={{ marginBottom: '30px', fontSize: '24px' }}>{isRegister ? 'Join Bantay' : 'Welcome Back'}</h2>
-        <div style={styles.roleToggle}>
-          <button onClick={() => setRole('Worker')} style={role === 'Worker' ? styles.roleBtnActive : styles.roleBtn}>Worker</button>
-          <button onClick={() => setRole('Employer')} style={role === 'Employer' ? styles.roleBtnActive : styles.roleBtn}>Employer</button>
-        </div>
-        {isRegister && <input style={styles.input} id="authName" placeholder="Full Name" />}
-        <input style={styles.input} id="authEmail" placeholder="Email Address" type="email" />
-        <input style={{ ...styles.input, marginTop: '10px' }} placeholder="Password" type="password" />
-        <button style={{ ...styles.saveBtn, width: '100%' }} onClick={() => onLogin({ name: isRegister ? document.getElementById('authName').value : "User", email: document.getElementById('authEmail').value, role })}>
-          {isRegister ? 'Register' : 'Login'}
-        </button>
-        <p style={{ marginTop: '20px', fontSize: '14px', cursor: 'pointer', opacity: 0.7 }} onClick={() => setIsRegister(!isRegister)}>
-          {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
-        </p>
+      <h2 style={{ marginBottom: '20px' }}>{title}</h2>
+      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <tr style={{ textAlign: 'left', opacity: 0.5, fontSize: '12px' }}>
+              <th style={{ padding: '15px' }}>NAME</th>
+              <th style={{ padding: '15px' }}>EMAIL</th>
+              <th style={{ padding: '15px' }}>ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((item, i) => (
+              <tr key={i} style={{ borderBottom: `1px solid ${THEME.border}` }}>
+                <td style={{ padding: '15px' }}>{item.name}</td>
+                <td style={{ padding: '15px' }}>{item.email}</td>
+                <td style={{ padding: '15px' }}><button style={{ color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer' }}>Suspend</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
-
-const styles = {
-  navbar: { display: 'flex', justifyContent: 'space-between', padding: '20px 8%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 100, alignItems: 'center', borderBottom: `1px solid ${THEME.border}` },
-  navLink: { cursor: 'pointer', opacity: 0.6, transition: '0.3s' },
-  navActive: { cursor: 'pointer', color: THEME.avocado, fontWeight: 'bold' },
-  notifBadge: { background: '#e74c3c', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' },
-  portalBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' },
-  logoutBtn: { background: 'transparent', color: '#fff', border: '1px solid #fff', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer' },
-  heroBanner: { height: '60vh', backgroundImage: `url(${BANNER_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' },
-  heroOverlay: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to bottom, rgba(2,28,2,0.4), #021c02)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 8%' },
-  searchBox: { background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', padding: '15px', borderRadius: '50px', display: 'flex', gap: '15px', border: `1px solid ${THEME.border}`, maxWidth: '800px' },
-  searchInput: { flex: 1, background: 'transparent', border: 'none', color: '#fff', outline: 'none', padding: '0 20px', fontSize: '16px' },
-  searchBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '12px 30px', borderRadius: '40px', fontWeight: 'bold', cursor: 'pointer' },
-  workerGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '30px', marginTop: '40px' },
-  workerCard: { background: THEME.glass, padding: '25px', borderRadius: '24px', border: `1px solid ${THEME.border}`, transition: '0.3s', position: 'relative' },
-  cardAvatar: { width: '60px', height: '60px', borderRadius: '15px', objectFit: 'cover' },
-  msgBtn: { width: '100%', marginTop: '20px', background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, padding: '10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s' },
-  portalContainer: { display: 'flex', minHeight: 'calc(100vh - 120px)', padding: '40px 8%' },
-  sidebar: { width: '280px', borderRight: `1px solid ${THEME.border}`, paddingRight: '40px' },
-  tabActive: { padding: '15px 20px', background: THEME.glass, color: THEME.avocado, borderRadius: '12px', cursor: 'pointer', marginBottom: '10px', fontWeight: 'bold' },
-  tabInactive: { padding: '15px 20px', cursor: 'pointer', marginBottom: '10px', opacity: 0.5, transition: '0.3s' },
-  editorPanel: { flex: 1, paddingLeft: '60px' },
-  profilePreview: { width: '180px', height: '180px', borderRadius: '30px', objectFit: 'cover', background: THEME.glass, border: `1px solid ${THEME.border}` },
-  uploadLabel: { display: 'block', marginTop: '15px', color: THEME.avocado, cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' },
-  inputGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' },
-  field: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  input: { background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`, padding: '12px 15px', borderRadius: '10px', color: '#fff', outline: 'none' },
-  saveBtn: { marginTop: '30px', background: THEME.avocado, color: '#fff', border: 'none', padding: '15px 40px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' },
-  authBg: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.black },
-  authCard: { width: '400px', textAlign: 'center', padding: '40px', background: THEME.glass, borderRadius: '30px', border: `1px solid ${THEME.border}` },
-  roleToggle: { display: 'flex', gap: '10px', marginBottom: '25px', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '12px' },
-  roleBtn: { flex: 1, background: 'transparent', border: 'none', color: '#fff', padding: '10px', cursor: 'pointer', opacity: 0.5 },
-  roleBtnActive: { flex: 1, background: THEME.avocado, color: '#fff', padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none', fontWeight: 'bold' },
-  chatContainer: { display: 'flex', height: '650px', background: THEME.glass, borderRadius: '24px', border: `1px solid ${THEME.border}`, overflow: 'hidden' },
-  chatSidebar: { width: '300px', borderRight: `1px solid ${THEME.border}`, background: 'rgba(0,0,0,0.2)' },
-  chatMain: { flex: 1, display: 'flex', flexDirection: 'column' },
-  chatHeader: { padding: '20px', borderBottom: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  chatMessages: { flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' },
-  msgBubbleIn: { alignSelf: 'flex-start', background: THEME.glass, padding: '12px 18px', borderRadius: '18px 18px 18px 4px', maxWidth: '70%', fontSize: '14px', border: `1px solid ${THEME.border}` },
-  msgBubbleOut: { alignSelf: 'flex-end', background: THEME.avocado, padding: '12px 18px', borderRadius: '18px 18px 4px 18px', maxWidth: '70%', fontSize: '14px' },
-  chatInputArea: { padding: '20px', borderTop: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', gap: '10px' },
-  msgInput: { flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', padding: '12px 20px', borderRadius: '30px', color: '#fff', outline: 'none' },
-  sendBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 25px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer' },
-  requestBtn: { background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, fontSize: '11px', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer' },
-  contactItem: { padding: '15px 20px', borderBottom: `1px solid ${THEME.border}`, cursor: 'pointer', transition: '0.2s' }
-};
