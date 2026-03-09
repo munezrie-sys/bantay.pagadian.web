@@ -37,7 +37,7 @@ export default function App() {
   const [activeMessagingTarget, setActiveMessagingTarget] = useState(null);
 
   const [coeRequests, setCoeRequests] = useState([
-    { id: 101, workerName: "Juan Dela Cruz", date: "2026-03-08", status: "pending", role: "Housekeeper" }
+    { id: 101, workerName: "Juan Dela Cruz", workerEmail: "juan@example.com", employerEmail: "admin@example.com", date: "2026-03-08", status: "pending", role: "Housekeeper" }
   ]);
 
   useEffect(() => {
@@ -78,29 +78,60 @@ export default function App() {
     setPortalTab('Messages');
   };
 
-  const handleUpdateProfile = async (profileData) => {
-    setLoading(true);
-    const finalPhoto = tempPhoto || user.photourl;
-    const updatedRecord = { ...profileData, photourl: finalPhoto, email: user.email, role: user.role };
-    
-    setUser(updatedRecord);
-    setProfiles(prev => {
-      const exists = prev.find(p => p.email.toLowerCase() === user.email.toLowerCase());
-      if (exists) return prev.map(p => p.email.toLowerCase() === user.email.toLowerCase() ? updatedRecord : p);
-      return [updatedRecord, ...prev];
-    });
+  const handleAcceptJob = (employerEmail) => {
+    // Check if an entry already exists for this worker and this employer
+    const alreadyExists = coeRequests.some(req => 
+      req.workerEmail === user.email && req.employerEmail === employerEmail
+    );
 
-    try {
-      await fetch(SCRIPT_URL, { 
-        method: 'POST', 
-        mode: 'no-cors', 
-        body: JSON.stringify({ action: 'updateProfile', ...updatedRecord }) 
-      });
-      alert("Account data saved successfully!");
-      setView('Home'); 
-    } catch (e) { console.error("Sync Error:", e); }
-    setLoading(false);
+    if (alreadyExists) {
+      alert("You are already hired by this employer.");
+      return;
+    }
+
+    const newHire = {
+      id: Date.now(),
+      workerName: user.name,
+      workerEmail: user.email,
+      employerEmail: employerEmail,
+      date: new Date().toISOString().split('T')[0],
+      status: "pending",
+      role: user.skills || "Staff"
+    };
+
+    setCoeRequests(prev => [newHire, ...prev]);
+    alert("Job offer accepted! You are now listed in the employer's active staff list.");
   };
+
+const handleUpdateProfile = async (profileData) => {
+  setLoading(true);
+  const finalPhoto = tempPhoto || user.photourl;
+  
+  const updatedRecord = { 
+    ...profileData, 
+    photourl: finalPhoto, 
+    email: user.email, 
+    role: user.role 
+  };
+  
+  setUser(updatedRecord);
+  setProfiles(prev => {
+    const exists = prev.find(p => p.email.toLowerCase() === user.email.toLowerCase());
+    if (exists) return prev.map(p => p.email.toLowerCase() === user.email.toLowerCase() ? updatedRecord : p);
+    return [updatedRecord, ...prev];
+  });
+
+  try {
+    await fetch(SCRIPT_URL, { 
+      method: 'POST', 
+      mode: 'no-cors', 
+      body: JSON.stringify({ action: 'updateProfile', ...updatedRecord }) 
+    });
+    alert("Account data saved successfully!");
+    setView('Home'); 
+  } catch (e) { console.error("Sync Error:", e); }
+  setLoading(false);
+};
 
   const handleLogout = () => {
     if(window.confirm("Are you sure you want to logout?")) {
@@ -190,7 +221,7 @@ export default function App() {
               )}
 
               {view === 'Portal' && portalTab === 'Messages' && (
-                <MessagingView user={user} initialTarget={activeMessagingTarget} clearTarget={() => setActiveMessagingTarget(null)} />
+                <MessagingView user={user} coeRequests={coeRequests} initialTarget={activeMessagingTarget} clearTarget={() => setActiveMessagingTarget(null)} onAcceptJob={handleAcceptJob} />
               )}
 
               {view === 'Portal' && user.role === 'Worker' && (
@@ -268,13 +299,12 @@ function HomeView({ filteredWorkers, user, setSearchQuery, onStartMsg }) {
   );
 }
 
-function MessagingView({ user, initialTarget, clearTarget }) {
-  const [chatList, setChatList] = useState([]); // List of partner emails
+function MessagingView({ user, coeRequests, initialTarget, clearTarget, onAcceptJob }) {
+  const [chatList, setChatList] = useState([]); 
   const [selectedChatEmail, setSelectedChatEmail] = useState(null);
-  const [messages, setMessages] = useState([]); // Messages for current chat
+  const [messages, setMessages] = useState([]); 
   const [textInput, setTextInput] = useState('');
 
-  // 1. Fetch Chat Partners (Sidebar)
   const fetchChatList = async () => {
     try {
       const response = await fetch(`${SCRIPT_URL}?action=getChatList&myEmail=${user.email}`);
@@ -283,7 +313,6 @@ function MessagingView({ user, initialTarget, clearTarget }) {
     } catch (e) { console.error("Chat List Error:", e); }
   };
 
-  // 2. Fetch Messages for Selected Chat
   const fetchMessages = async (contactEmail) => {
     if (!contactEmail) return;
     try {
@@ -326,8 +355,8 @@ function MessagingView({ user, initialTarget, clearTarget }) {
     }
   }, [initialTarget]);
 
-  const handleSend = async (file = null, isMobileRequest = false) => {
-    if (!textInput.trim() && !file && !isMobileRequest) return;
+  const handleSend = async (file = null, isMobileRequest = false, isHireRequest = false) => {
+    if (!textInput.trim() && !file && !isMobileRequest && !isHireRequest) return;
     if (!selectedChatEmail) return;
 
     let fileContent = null;
@@ -337,13 +366,12 @@ function MessagingView({ user, initialTarget, clearTarget }) {
       action: 'sendMessage',
       senderEmail: user.email,
       recipientEmail: selectedChatEmail,
-      type: isMobileRequest ? 'text' : (file ? (file.type.startsWith('image/') ? 'image' : 'file') : 'text'),
-      text: isMobileRequest ? "System: I am requesting your mobile number." : textInput,
+      type: (isMobileRequest || isHireRequest) ? 'text' : (file ? (file.type.startsWith('image/') ? 'image' : 'file') : 'text'),
+      text: isMobileRequest ? "System: I am requesting your mobile number." : (isHireRequest ? "SYSTEM_HIRE_REQUEST" : textInput),
       content: fileContent,
       fileName: file ? file.name : null
     };
 
-    // Optimistic UI update
     const tempMsg = { 
       sender: 'me', 
       text: payload.text, 
@@ -362,7 +390,6 @@ function MessagingView({ user, initialTarget, clearTarget }) {
         mode: 'no-cors', 
         body: JSON.stringify(payload) 
       });
-      // Refresh list after sending if it's a new contact
       if (!chatList.includes(selectedChatEmail)) fetchChatList();
     } catch (e) { console.error("Send Error:", e); }
   };
@@ -389,15 +416,41 @@ function MessagingView({ user, initialTarget, clearTarget }) {
                 <strong style={{ fontSize: '14px' }}>{selectedChatEmail}</strong>
                 <span style={{ fontSize: '10px', color: THEME.avocado }}>Private Conversation</span>
               </div>
-              <button onClick={() => handleSend(null, true)} style={styles.requestBtn}>Request Mobile #</button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                 <button onClick={() => handleSend(null, true)} style={styles.requestBtn}>Request Mobile #</button>
+                 {user.role === 'Employer' && (
+                    <button 
+                      onClick={() => window.confirm(`Send hire request to ${selectedChatEmail}?`) && handleSend(null, false, true)} 
+                      style={{ ...styles.portalBtn, fontSize: '12px' }}
+                    >
+                      Hire Staff
+                    </button>
+                 )}
+              </div>
             </div>
             <div style={styles.chatMessages}>
               {messages.length === 0 && <p style={{ textAlign: 'center', opacity: 0.3, marginTop: '50px' }}>No messages yet. Send a greeting!</p>}
               {messages.map((m, i) => (
                 <div key={i} style={m.sender === "me" ? styles.msgBubbleOut : styles.msgBubbleIn}>
-                  {m.type === 'text' && <div>{m.text}</div>}
-                  {m.type === 'image' && <img src={m.content} style={{ maxWidth: '200px', borderRadius: '8px', display: 'block' }} alt="sent" />}
-                  {m.type === 'file' && <a href={m.content} download={m.fileName} style={{ color: '#fff', fontSize: '12px', textDecoration: 'underline' }}>📁 {m.fileName}</a>}
+                  {m.text === "SYSTEM_HIRE_REQUEST" ? (
+                     <div style={{ textAlign: 'center', padding: '5px' }}>
+                        <p style={{ fontSize: '12px', margin: '0 0 8px 0' }}>💼 <strong>New Job Offer!</strong></p>
+                        {m.sender === 'other' && user.role === 'Worker' ? (
+                          // Prevent duplicate button showing if already in coeRequests
+                          !coeRequests.some(r => r.workerEmail === user.email && r.employerEmail === selectedChatEmail) ? (
+                            <button onClick={() => onAcceptJob(selectedChatEmail)} style={{ background: THEME.avocado, border: 'none', color: '#fff', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>Accept Job</button>
+                          ) : (
+                            <span style={{ color: THEME.avocado, fontSize: '11px', fontWeight: 'bold' }}>✓ Job Accepted</span>
+                          )
+                        ) : <span style={{ opacity: 0.5, fontSize: '11px' }}>Hire request sent.</span>}
+                     </div>
+                  ) : (
+                    <>
+                      {m.type === 'text' && <div>{m.text}</div>}
+                      {m.type === 'image' && <img src={m.content} style={{ maxWidth: '200px', borderRadius: '8px', display: 'block' }} alt="sent" />}
+                      {m.type === 'file' && <a href={m.content} download={m.fileName} style={{ color: '#fff', fontSize: '12px', textDecoration: 'underline' }}>📁 {m.fileName}</a>}
+                    </>
+                  )}
                   <div style={{ fontSize: '9px', opacity: 0.4, marginTop: '5px', textAlign: 'right' }}>{m.time}</div>
                 </div>
               ))}
@@ -427,10 +480,34 @@ function MessagingView({ user, initialTarget, clearTarget }) {
 }
 
 function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
+  const isWorker = user.role === 'Worker';
+
+  const triggerSave = () => {
+    const data = {
+      name: document.getElementById('pName').value,
+      dob: document.getElementById('pDob').value,
+      bio: document.getElementById('pBio').value,
+    };
+
+    if (isWorker) {
+      data.skills = document.getElementById('pSkills').value;
+      data.location = document.getElementById('pLoc').value;
+      data.experience = document.getElementById('pExp').value;
+    } else {
+      data.residence = document.getElementById('pRes').value;
+      data.email_contact = document.getElementById('pEmailContact').value;
+      data.contact_no = document.getElementById('pPhone').value;
+    }
+
+    onSave(data);
+  };
+
   return (
     <>
       <h2 style={{ fontSize: '32px', marginBottom: '10px' }}>Profile Settings</h2>
-      <p style={{ opacity: 0.6, marginBottom: '30px' }}>Keep your professional info up to date for better visibility.</p>
+      <p style={{ opacity: 0.6, marginBottom: '30px' }}>
+        {isWorker ? 'Keep your professional skills up to date for better visibility.' : 'Update your contact details for workers to reach you.'}
+      </p>
       
       <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-start' }}>
         <div style={{ textAlign: 'center' }}>
@@ -443,20 +520,31 @@ function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
         <div style={{ flex: 1 }}>
           <div style={styles.inputGrid}>
             <div style={styles.field}> <label>Full Name</label> <input id="pName" style={styles.input} defaultValue={user.name} /> </div>
-            <div style={styles.field}> <label>{user.role === 'Worker' ? 'Main Skill' : 'Employer Name'}</label> <input id="pSkills" style={styles.input} defaultValue={user.skills} /> </div>
-            <div style={styles.field}> <label>Current Location</label> <input id="pLoc" style={styles.input} defaultValue={user.location} /> </div>
-            <div style={styles.field}> <label>Experience (Years)</label> <input id="pExp" style={styles.input} defaultValue={user.experience} /> </div>
-            <div style={{ ...styles.field, gridColumn: 'span 2' }}> <label>Bio / Background</label> <textarea id="pBio" style={{ ...styles.input, height: '80px', resize: 'none' }} defaultValue={user.bio || ""} placeholder="Tell employers about your previous work..."></textarea> </div>
             <div style={styles.field}> <label>Date of Birth</label> <input id="pDob" type="date" style={styles.input} defaultValue={user.dob} /> </div>
+
+            {isWorker ? (
+              <>
+                <div style={styles.field}> <label>Main Skill</label> <input id="pSkills" style={styles.input} defaultValue={user.skills} /> </div>
+                <div style={styles.field}> <label>Current Location</label> <input id="pLoc" style={styles.input} defaultValue={user.location} /> </div>
+                <div style={styles.field}> <label>Experience (Years)</label> <input id="pExp" style={styles.input} defaultValue={user.experience} /> </div>
+              </>
+            ) : (
+              <>
+                <div style={styles.field}> <label>Residence</label> <input id="pRes" style={styles.input} defaultValue={user.residence} /> </div>
+                <div style={styles.field}> <label>Contact Email</label> <input id="pEmailContact" style={styles.input} defaultValue={user.email_contact} /> </div>
+                <div style={styles.field}> <label>Contact No.</label> <input id="pPhone" style={styles.input} defaultValue={user.contact_no} /> </div>
+              </>
+            )}
+
+            <div style={{ ...styles.field, gridColumn: 'span 2' }}> 
+              <label>{isWorker ? 'Bio / Background' : 'Employer Description'}</label> 
+              <textarea id="pBio" style={{ ...styles.input, height: '80px', resize: 'none' }} defaultValue={user.bio || ""} placeholder={isWorker ? "Tell employers about your previous work..." : "Briefly describe your hiring needs..."}></textarea> 
+            </div>
           </div>
-          <button disabled={loading} style={styles.saveBtn} onClick={() => onSave({
-            name: document.getElementById('pName').value,
-            skills: document.getElementById('pSkills').value,
-            location: document.getElementById('pLoc').value,
-            experience: document.getElementById('pExp').value,
-            dob: document.getElementById('pDob').value,
-            bio: document.getElementById('pBio').value,
-          })}>{loading ? 'Saving Changes...' : 'Save Profile'}</button>
+          
+          <button disabled={loading} style={styles.saveBtn} onClick={triggerSave}>
+            {loading ? 'Saving Changes...' : 'Save Profile'}
+          </button>
         </div>
       </div>
     </>
@@ -627,40 +715,40 @@ const styles = {
   portalBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 22px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' },
   logoutBtn: { background: 'transparent', color: '#fff', border: '1px solid #fff', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer' },
   heroBanner: { height: '60vh', backgroundImage: `url(${BANNER_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' },
-  heroOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, #021c02 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 8%' },
-  searchBox: { display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '50px', padding: '8px', maxWidth: '650px', margin: '0 auto', border: `1px solid ${THEME.border}`, backdropFilter: 'blur(10px)' },
-  searchInput: { flex: 1, background: 'transparent', border: 'none', color: '#fff', paddingLeft: '25px', fontSize: '16px', outline: 'none' },
-  searchBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '12px 30px', borderRadius: '50px', fontWeight: 'bold', cursor: 'pointer' },
-  workerGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px', marginTop: '40px' },
-  workerCard: { background: THEME.glass, padding: '30px', borderRadius: '24px', border: `1px solid ${THEME.border}`, transition: '0.3s' },
-  cardAvatar: { width: '65px', height: '65px', borderRadius: '15px', objectFit: 'cover', border: `2px solid ${THEME.avocado}` },
-  msgBtn: { width: '100%', marginTop: '20px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: `1px solid ${THEME.border}`, padding: '12px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s' },
+  heroOverlay: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to bottom, rgba(2,28,2,0.4), #021c02)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 8%' },
+  searchBox: { background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', padding: '15px', borderRadius: '50px', display: 'flex', gap: '15px', border: `1px solid ${THEME.border}`, maxWidth: '800px' },
+  searchInput: { flex: 1, background: 'transparent', border: 'none', color: '#fff', outline: 'none', padding: '0 20px', fontSize: '16px' },
+  searchBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '12px 30px', borderRadius: '40px', fontWeight: 'bold', cursor: 'pointer' },
+  workerGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '30px', marginTop: '40px' },
+  workerCard: { background: THEME.glass, padding: '25px', borderRadius: '24px', border: `1px solid ${THEME.border}`, transition: '0.3s', position: 'relative' },
+  cardAvatar: { width: '60px', height: '60px', borderRadius: '15px', objectFit: 'cover' },
+  msgBtn: { width: '100%', marginTop: '20px', background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, padding: '10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s' },
   portalContainer: { display: 'flex', minHeight: 'calc(100vh - 120px)', padding: '40px 8%' },
   sidebar: { width: '280px', borderRight: `1px solid ${THEME.border}`, paddingRight: '40px' },
-  tabInactive: { padding: '14px 20px', borderRadius: '12px', cursor: 'pointer', opacity: 0.5, transition: '0.3s', marginBottom: '8px' },
-  tabActive: { padding: '14px 20px', borderRadius: '12px', cursor: 'pointer', background: THEME.glass, color: THEME.avocado, fontWeight: 'bold', marginBottom: '8px' },
+  tabActive: { padding: '15px 20px', background: THEME.glass, color: THEME.avocado, borderRadius: '12px', cursor: 'pointer', marginBottom: '10px', fontWeight: 'bold' },
+  tabInactive: { padding: '15px 20px', cursor: 'pointer', marginBottom: '10px', opacity: 0.5, transition: '0.3s' },
   editorPanel: { flex: 1, paddingLeft: '60px' },
-  inputGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' },
+  profilePreview: { width: '180px', height: '180px', borderRadius: '30px', objectFit: 'cover', background: THEME.glass, border: `1px solid ${THEME.border}` },
+  uploadLabel: { display: 'block', marginTop: '15px', color: THEME.avocado, cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' },
+  inputGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' },
   field: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  input: { background: THEME.glass, border: `1px solid ${THEME.border}`, borderRadius: '12px', padding: '15px', color: '#fff', outline: 'none', fontSize: '15px' },
-  saveBtn: { marginTop: '30px', background: THEME.avocado, color: '#fff', border: 'none', padding: '15px 40px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' },
-  profilePreview: { width: '180px', height: '180px', borderRadius: '30px', objectFit: 'cover', marginBottom: '15px', border: `3px solid ${THEME.avocado}` },
-  uploadLabel: { display: 'block', color: THEME.avocado, fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' },
+  input: { background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`, padding: '12px 15px', borderRadius: '10px', color: '#fff', outline: 'none' },
+  saveBtn: { marginTop: '30px', background: THEME.avocado, color: '#fff', border: 'none', padding: '15px 40px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' },
   authBg: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.black },
-  authCard: { width: '400px', textAlign: 'center', padding: '50px', background: THEME.glass, borderRadius: '30px', border: `1px solid ${THEME.border}` },
-  roleToggle: { display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '12px', marginBottom: '25px' },
-  roleBtn: { flex: 1, padding: '10px', border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', borderRadius: '8px' },
-  roleBtnActive: { flex: 1, padding: '10px', border: 'none', background: THEME.avocado, color: '#fff', cursor: 'pointer', borderRadius: '8px', fontWeight: 'bold' },
-  chatContainer: { display: 'flex', height: '600px', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', overflow: 'hidden', border: `1px solid ${THEME.border}` },
-  chatSidebar: { width: '300px', borderRight: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.02)' },
-  contactItem: { padding: '20px', cursor: 'pointer', borderBottom: `1px solid ${THEME.border}`, transition: '0.2s' },
+  authCard: { width: '400px', textAlign: 'center', padding: '40px', background: THEME.glass, borderRadius: '30px', border: `1px solid ${THEME.border}` },
+  roleToggle: { display: 'flex', gap: '10px', marginBottom: '25px', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '12px' },
+  roleBtn: { flex: 1, background: 'transparent', border: 'none', color: '#fff', padding: '10px', cursor: 'pointer', opacity: 0.5 },
+  roleBtnActive: { flex: 1, background: THEME.avocado, color: '#fff', padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none', fontWeight: 'bold' },
+  chatContainer: { display: 'flex', height: '650px', background: THEME.glass, borderRadius: '24px', border: `1px solid ${THEME.border}`, overflow: 'hidden' },
+  chatSidebar: { width: '300px', borderRight: `1px solid ${THEME.border}`, background: 'rgba(0,0,0,0.2)' },
   chatMain: { flex: 1, display: 'flex', flexDirection: 'column' },
-  chatHeader: { padding: '20px 30px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  requestBtn: { background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, padding: '6px 14px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer' },
-  chatMessages: { flex: 1, padding: '30px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' },
-  msgBubbleIn: { alignSelf: 'flex-start', background: THEME.glass, padding: '12px 18px', borderRadius: '18px 18px 18px 4px', maxWidth: '70%', fontSize: '14px' },
-  msgBubbleOut: { alignSelf: 'flex-end', background: THEME.avocado, color: '#fff', padding: '12px 18px', borderRadius: '18px 18px 4px 18px', maxWidth: '70%', fontSize: '14px' },
-  chatInputArea: { padding: '20px', borderTop: `1px solid ${THEME.border}`, display: 'flex', gap: '15px', alignItems: 'center' },
-  msgInput: { flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', padding: '12px 20px', color: '#fff', outline: 'none' },
-  sendBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }
+  chatHeader: { padding: '20px', borderBottom: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  chatMessages: { flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' },
+  msgBubbleIn: { alignSelf: 'flex-start', background: THEME.glass, padding: '12px 18px', borderRadius: '18px 18px 18px 4px', maxWidth: '70%', fontSize: '14px', border: `1px solid ${THEME.border}` },
+  msgBubbleOut: { alignSelf: 'flex-end', background: THEME.avocado, padding: '12px 18px', borderRadius: '18px 18px 4px 18px', maxWidth: '70%', fontSize: '14px' },
+  chatInputArea: { padding: '20px', borderTop: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', gap: '10px' },
+  msgInput: { flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', padding: '12px 20px', borderRadius: '30px', color: '#fff', outline: 'none' },
+  sendBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 25px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer' },
+  requestBtn: { background: 'transparent', border: `1px solid ${THEME.avocado}`, color: THEME.avocado, fontSize: '11px', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer' },
+  contactItem: { padding: '15px 20px', borderBottom: `1px solid ${THEME.border}`, cursor: 'pointer', transition: '0.2s' }
 };
