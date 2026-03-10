@@ -126,29 +126,36 @@ export default function App() {
   };
 
   const handleAcceptJob = (employerEmail) => {
-    const alreadyExists = coeRequests.some(req => 
-      req.workerEmail === user.email && req.employerEmail === employerEmail
-    );
+    setCoeRequests(prev => {
+      // Check if this specific hire already exists in the list
+      const alreadyHired = prev.some(
+        req => req.workerEmail === user.email && 
+               req.employerEmail === employerEmail && 
+               req.status === "accepted"
+      );
 
-    if (alreadyExists) {
-      alert("You are already hired by this employer.");
-      return;
-    }
+      if (alreadyHired) {
+        alert("You are already in this employer's hired list.");
+        return prev;
+      }
 
-    const newHire = {
-      id: Date.now(),
-      workerName: user.name,
-      workerEmail: user.email,
-      employerEmail: employerEmail,
-      date: new Date().toISOString().split('T')[0],
-      status: "pending",
-      role: user.skills || "Staff"
-    };
+      // Create the new hire record with 'accepted' status
+      const newHire = {
+        id: Date.now(),
+        workerName: user.name,
+        workerEmail: user.email,
+        employerEmail: employerEmail,
+        date: new Date().toISOString().split('T')[0],
+        status: "accepted", // This is the trigger for the list
+        role: user.skills || "Staff"
+      };
 
-    setCoeRequests(prev => [newHire, ...prev]);
+      return [newHire, ...prev];
+    });
+
     alert("Job offer accepted! You are now listed in the employer's active staff list.");
   };
-
+  
   const handleUpdateProfile = async (profileData) => {
     setLoading(true);
     const finalPhoto = tempPhoto || user.photourl;
@@ -612,70 +619,139 @@ function ProfileEditor({ user, loading, tempPhoto, setTempPhoto, onSave }) {
     </>
   );
 }
+function GovDocsView({ user, title }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  // Track if the user just uploaded something in this session
+  const [uploadStatus, setUploadStatus] = useState(user.doc_status || "Not Submitted");
 
-function GovDocsView({ user, coeRequests, title }) {
-  const myCoeRequest = coeRequests.find(r => r.workerEmail === user.email);
+  const DOCS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzuyVXlxfmlbK_IzDbdxZjEbG0hBTc4TCTYKhhkSMDt63SWqX0xqNi5eqeQGZz0-cJ/exec";
 
-  const handleDownloadSignedCOE = () => {
-    if (!myCoeRequest?.fileData) return;
-    const link = document.createElement("a");
-    link.href = myCoeRequest.fileData;
-    link.download = `Signed_COE_${user.name}.pdf`;
-    link.click();
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  const handleSaveToDrive = async () => {
+    if (!selectedFile) return alert("Please select a document first.");
+    
+    setUploading(true);
+    const reader = new FileReader();
+    
+    reader.onload = async () => {
+      const base64Data = reader.result.split(',')[1];
+      
+      const payload = {
+        action: "UPLOAD_DOC",
+        userType: user.role,    
+        userId: user.email,
+        fileName: `${user.role}_ID_${user.name.replace(/\s/g, '_')}_${Date.now()}`,
+        mimeType: selectedFile.type,
+        base64: base64Data
+      };
+
+      try {
+        await fetch(DOCS_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        // Update local state to show "Pending Review"
+        setUploadStatus("Pending Review");
+        alert("Document saved successfully! Admin will review your identity.");
+        setSelectedFile(null);
+      } catch (error) {
+        console.error("Upload Error:", error);
+        alert("Failed to save document.");
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    reader.readAsDataURL(selectedFile);
+  };
+
+  // Helper to color the status badge
+  const getStatusColor = (status) => {
+    switch(status) {
+      case "Verified": return "#2ecc71";
+      case "Pending Review": return "#f1c40f";
+      case "Rejected": return "#e74c3c";
+      default: return "#95a5a6";
+    }
   };
 
   return (
-    <div>
-      <h2 style={{ fontSize: '32px', marginBottom: '10px' }}>{title}</h2>
-      <p style={{ opacity: 0.6, marginBottom: '30px' }}>Manage your legal requirements for profiling.</p>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={styles.workerCard}>
-          <h4 style={{ color: THEME.avocado, marginBottom: '10px' }}>National ID / Driver's License</h4>
-          <input type="file" style={{ fontSize: '12px' }} />
-        </div>
-        <div style={styles.workerCard}>
-          <h4 style={{ color: THEME.avocado, marginBottom: '10px' }}>NBI / Police Clearance</h4>
-          <input type="file" style={{ fontSize: '12px' }} />
-        </div>
+    <div style={{ maxWidth: '600px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h2 style={{ fontSize: '32px', margin: 0 }}>{title}</h2>
+        <span style={{ 
+          padding: '5px 12px', 
+          borderRadius: '20px', 
+          fontSize: '12px', 
+          fontWeight: 'bold',
+          background: getStatusColor(uploadStatus),
+          color: '#000'
+        }}>
+          {uploadStatus.toUpperCase()}
+        </span>
       </div>
+      
+      <p style={{ opacity: 0.6, marginBottom: '30px' }}>
+        {user.role === 'Employer' 
+          ? 'Upload business permits or valid IDs to verify your account.' 
+          : 'Upload NBI Clearance, PhilID, or Barangay Certificate for background checking.'}
+      </p>
 
-      <div style={{ ...styles.workerCard, marginTop: '30px', border: `1px solid ${THEME.border}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h4 style={{ color: THEME.avocado, margin: 0 }}>Certificate of Employment (COE)</h4>
-            <p style={{ opacity: 0.6, fontSize: '13px', marginTop: '5px' }}>
-              {myCoeRequest 
-                ? `Status: ${myCoeRequest.status.toUpperCase()}` 
-                : "Request a digital COE from your employer for your records."}
-            </p>
+      <div style={{ 
+        background: THEME.glass, 
+        padding: '30px', 
+        borderRadius: '15px', 
+        border: `1px solid ${THEME.border}` 
+      }}>
+        {uploadStatus === "Verified" ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '10px' }}>✅</div>
+            <h4 style={{ color: '#2ecc71' }}>Account Verified</h4>
+            <p style={{ fontSize: '14px', opacity: 0.7 }}>Your identity has been confirmed. You do not need to upload further documents.</p>
           </div>
+        ) : (
+          <>
+            <div style={styles.field}>
+              <label style={{ marginBottom: '15px', fontWeight: 'bold' }}>Select Government Document</label>
+              <input 
+                type="file" 
+                onChange={handleFileChange} 
+                accept=".pdf,image/*" 
+                style={styles.input} 
+              />
+            </div>
 
-          {!myCoeRequest && (
-            <button style={{...styles.portalBtn, opacity: 0.5}} disabled>
-              Request COE
+            <button 
+              onClick={handleSaveToDrive} 
+              disabled={uploading || !selectedFile}
+              style={{
+                ...styles.saveBtn,
+                width: '100%',
+                background: uploading ? '#444' : THEME.avocado,
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                opacity: (uploading || !selectedFile) ? 0.6 : 1
+              }}
+            >
+              {uploading ? "Uploading to Drive..." : "Save to Google Drive"}
             </button>
-          )}
+          </>
+        )}
 
-          {myCoeRequest?.status === 'pending' && (
-            <button style={{ ...styles.portalBtn, background: '#f1c40f', color: '#000', cursor: 'default' }}>
-              Pending Approval
-            </button>
-          )}
-
-          {myCoeRequest?.status === 'completed' && (
-            <button style={{ ...styles.portalBtn, background: THEME.avocado }} onClick={handleDownloadSignedCOE}>
-              Download Signed COE
-            </button>
-          )}
+        <div style={{ marginTop: '20px', fontSize: '11px', opacity: 0.4, textAlign: 'center', lineHeight: '1.4' }}>
+          Your data is processed according to the BANTAY Privacy Policy.<br/>
+          Current Status: <strong>{uploadStatus}</strong>
         </div>
       </div>
     </div>
   );
 }
-
-/* --- Replace your existing EmployerHiresView with this updated version --- */
-
 function EmployerHiresView({ requests, setRequests, user }) {
   
   // NEW: Function to generate the interactive COE
@@ -822,34 +898,86 @@ function JobBoardView() {
 
 function AuthGate({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
-  const handleAuth = (e) => {
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('Worker');
+  const [name, setName] = useState('');
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const data = {
-      email: e.target.email.value,
-      name: isLogin ? e.target.email.value.split('@')[0] : e.target.fullName.value,
-      role: isLogin ? 'Worker' : e.target.role.value 
-    };
-    onLogin(data);
+    onLogin({ email, name: name || email.split('@')[0], role });
+  };
+
+  const authStyles = {
+    container: {
+      height: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      /* FADING EFFECT: Linear gradient over the background image */
+      background: `linear-gradient(rgba(2, 28, 2, 0.85), rgba(2, 28, 2, 0.85)), url('/background.jpg')`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      fontFamily: 'Inter, sans-serif'
+    },
+    card: {
+      background: 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: 'blur(15px)',
+      padding: '40px',
+      borderRadius: '20px',
+      border: `1px solid ${THEME.border}`,
+      width: '100%',
+      maxWidth: '400px',
+      textAlign: 'center',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+    }
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: THEME.black }}>
-      <div style={{ ...styles.workerCard, width: '400px', padding: '40px' }}>
-        <img src="websitelogo.png" alt="Logo" style={{ height: '60px', marginBottom: '30px', display: 'block', marginInline: 'auto' }} />
-        <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {!isLogin && <input name="fullName" placeholder="Full Name" required style={styles.input} />}
-          <input name="email" type="email" placeholder="Email Address" required style={styles.input} />
+    <div style={authStyles.container}>
+      <div style={authStyles.card}>
+        <img src="websitelogo.png" alt="Bantay" style={{ height: '60px', marginBottom: '20px' }} />
+        <h2 style={{ marginBottom: '30px', fontWeight: '700' }}>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+        
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           {!isLogin && (
-            <select name="role" style={styles.input}>
-              <option value="Worker">I am looking for Work</option>
-              <option value="Employer">I am looking to Hire</option>
-            </select>
+            <input 
+              style={styles.input} 
+              placeholder="Full Name" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              required 
+            />
           )}
-          <button type="submit" style={{ ...styles.portalBtn, padding: '15px' }}>{isLogin ? 'Login' : 'Get Started'}</button>
+          <input 
+            style={styles.input} 
+            type="email" 
+            placeholder="Email Address" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            required 
+          />
+          <select 
+            style={styles.input} 
+            value={role} 
+            onChange={(e) => setRole(e.target.value)}
+          >
+            <option value="Worker">I am a Worker</option>
+            <option value="Employer">I am an Employer</option>
+          </select>
+          
+          <button type="submit" style={styles.saveBtn}>
+            {isLogin ? 'Login to Portal' : 'Register Now'}
+          </button>
         </form>
-        <p style={{ textAlign: 'center', marginTop: '25px', opacity: 0.5, fontSize: '14px', cursor: 'pointer' }} onClick={() => setIsLogin(!isLogin)}>
-          {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
+
+        <p style={{ marginTop: '25px', fontSize: '14px', opacity: 0.6 }}>
+          {isLogin ? "Don't have an account?" : "Already registered?"} 
+          <span 
+            onClick={() => setIsLogin(!isLogin)} 
+            style={{ color: THEME.avocado, cursor: 'pointer', marginLeft: '8px', fontWeight: 'bold' }}
+          >
+            {isLogin ? 'Sign up' : 'Sign in'}
+          </span>
         </p>
       </div>
     </div>
