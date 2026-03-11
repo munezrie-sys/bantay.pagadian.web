@@ -31,13 +31,14 @@ const styles = {
   navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 8%', borderBottom: `1px solid ${THEME.border}`, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 100 },
   navLink: { opacity: 0.6, cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
   navActive: { color: THEME.avocado, cursor: 'pointer', fontSize: '14px', fontWeight: '700' },
+  dashboardBg: { minHeight: '100vh', width: '100%', backgroundImage: `linear-gradient(to bottom, rgba(2, 28, 2, 0.4) 0%, ${THEME.black} 100%), url(${BANNER_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', },
   portalBtn: { background: THEME.avocado, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
   logoutBtn: { background: 'transparent', color: '#fff', border: `1px solid ${THEME.border}`, padding: '8px 15px', borderRadius: '8px', cursor: 'pointer' },
   portalContainer: { display: 'flex', minHeight: 'calc(100vh - 80px)' },
   sidebar: { width: '280px', borderRight: `1px solid ${THEME.border}`, padding: '40px 30px' },
   tabActive: { padding: '12px 20px', background: THEME.glass, borderRadius: '10px', color: THEME.avocado, fontWeight: 'bold', marginBottom: '10px', cursor: 'pointer' },
   tabInactive: { padding: '12px 20px', opacity: 0.4, marginBottom: '10px', cursor: 'pointer' },
-  editorPanel: { flex: 1, padding: '60px 8%', overflowY: 'auto' },
+ editorPanel: { flex: 1, padding: '60px 8%', overflowY: 'auto', background: 'transparent'  },
   workerCard: { background: 'rgba(255,255,255,0.03)', border: `1px solid ${THEME.border}`, borderRadius: '15px', padding: '20px' },
   heroBanner: { height: '400px', backgroundImage: `url(${BANNER_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' },
   heroOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(2,28,2,0.4), #021c02)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 8%' },
@@ -63,7 +64,7 @@ const styles = {
   uploadLabel: { fontSize: '12px', color: THEME.avocado, cursor: 'pointer', textDecoration: 'underline' },
   inputGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
   field: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  input: { background: 'rgba(255,255,255,0.05)', border: `1px solid ${THEME.border}`, padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none' },
+  input: { background: 'rgba(243, 234, 234, 0.05)', border: `1px solid ${THEME.border}`, padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none' },
   saveBtn: { marginTop: '30px', padding: '15px 40px', background: THEME.avocado, border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 'bold', cursor: 'pointer' },
   notifBadge: { background: '#e74c3c', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '10px', position: 'relative', top: '-10px', left: '-10px' }
 };
@@ -258,81 +259,83 @@ export default function App() {
         )}
 
         {(view === 'Portal' || view === 'Admin') && (
+          <div style={styles.dashboardBg}> 
           <div style={styles.portalContainer}>
-            <aside style={styles.sidebar}>
-              <h3 style={{ opacity: 0.4, fontSize: '11px', letterSpacing: '2px', marginBottom: '30px' }}>
-                {view === 'Admin' ? 'SYSTEM CONTROL' : `SESSION: ${user.email}`}
-              </h3>
-              {view === 'Admin' ? (
-                <>
-                  <div onClick={() => setPortalTab('Stats')} style={portalTab === 'Stats' ? styles.tabActive : styles.tabInactive}>Website Status</div>
-                  <div onClick={() => setPortalTab('WorkersList')} style={portalTab === 'WorkersList' ? styles.tabActive : styles.tabInactive}>Workers List</div>
-                  <div onClick={() => setPortalTab('EmployersList')} style={portalTab === 'EmployersList' ? styles.tabActive : styles.tabInactive}>Employers List</div>
-                </>
-              ) : (
-                <>
-                  <div onClick={() => setPortalTab('Profile')} style={portalTab === 'Profile' ? styles.tabActive : styles.tabInactive}>My Account</div>
-                  <div onClick={() => setPortalTab('Messages')} style={portalTab === 'Messages' ? styles.tabActive : styles.tabInactive}>Messages</div>
-                  {user.role === 'Employer' ? (
-                    <>
-                      <div onClick={() => setPortalTab('GovDocs')} style={portalTab === 'GovDocs' ? styles.tabActive : styles.tabInactive}>Identity Verification</div>
-                      <div onClick={() => setPortalTab('HiredList')} style={portalTab === 'HiredList' ? styles.tabActive : styles.tabInactive}>Hired Workers</div>
-                    </>
-                  ) : (
-                    <>
-                      <div onClick={() => setPortalTab('Jobs')} style={portalTab === 'Jobs' ? styles.tabActive : styles.tabInactive}>Job Board</div>
-                      <div onClick={() => setPortalTab('GovDocs')} style={portalTab === 'GovDocs' ? styles.tabActive : styles.tabInactive}>Documents</div>
-                    </>
-                  )}
-                </>
-              )}
-            </aside>
+          <aside style={styles.sidebar}></aside>
+              <aside style={styles.sidebar}>
+                <h3 style={{ opacity: 0.4, fontSize: '11px', letterSpacing: '2px', marginBottom: '30px' }}>
+                  {view === 'Admin' ? 'SYSTEM CONTROL' : `SESSION: ${user.email}`}
+                </h3>
+                {view === 'Admin' ? (
+                  <>
+                    <div onClick={() => setPortalTab('Stats')} style={portalTab === 'Stats' ? styles.tabActive : styles.tabInactive}>Website Status</div>
+                    <div onClick={() => setPortalTab('WorkersList')} style={portalTab === 'WorkersList' ? styles.tabActive : styles.tabInactive}>Workers List</div>
+                    <div onClick={() => setPortalTab('EmployersList')} style={portalTab === 'EmployersList' ? styles.tabActive : styles.tabInactive}>Employers List</div>
+                  </>
+                ) : (
+                  <>
+                    <div onClick={() => setPortalTab('Profile')} style={portalTab === 'Profile' ? styles.tabActive : styles.tabInactive}>My Account</div>
+                    <div onClick={() => setPortalTab('Messages')} style={portalTab === 'Messages' ? styles.tabActive : styles.tabInactive}>Messages</div>
+                    {user.role === 'Employer' ? (
+                      <>
+                        <div onClick={() => setPortalTab('GovDocs')} style={portalTab === 'GovDocs' ? styles.tabActive : styles.tabInactive}>Identity Verification</div>
+                        <div onClick={() => setPortalTab('HiredList')} style={portalTab === 'HiredList' ? styles.tabActive : styles.tabInactive}>Hired Workers</div>
+                      </>
+                    ) : (
+                      <>
+                        <div onClick={() => setPortalTab('Jobs')} style={portalTab === 'Jobs' ? styles.tabActive : styles.tabInactive}>Job Board</div>
+                        <div onClick={() => setPortalTab('GovDocs')} style={portalTab === 'GovDocs' ? styles.tabActive : styles.tabInactive}>Documents</div>
+                      </>
+                    )}
+                  </>
+                )}
+              </aside>
 
-            <section style={styles.editorPanel}>
-              {view === 'Admin' && portalTab === 'Stats' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                  <StatCard label="Total Users" val={profiles.length} />
-                  <StatCard label="Workers" val={profiles.filter(p => p.role === 'Worker').length} />
-                  <StatCard label="Employers" val={profiles.filter(p => p.role === 'Employer').length} />
-                </div>
-              )}
-              
-              {/* Added logic passing for Workers and Employers lists */}
-              {view === 'Admin' && portalTab === 'WorkersList' && (
-                <AdminTable 
-                  title="Master Worker Registry" 
-                  data={profiles.filter(p => p.role === 'Worker')} 
-                  onVerify={handleVerifyUser}
-                  onViewDoc={(url) => setPreviewDoc(url)}
-                />
-              )}
-              {view === 'Admin' && portalTab === 'EmployersList' && (
-                <AdminTable 
-                  title="Master Employer Registry" 
-                  data={profiles.filter(p => p.role === 'Employer')} 
-                  onVerify={handleVerifyUser}
-                  onViewDoc={(url) => setPreviewDoc(url)}
-                />
-              )}
+              <section style={styles.editorPanel}>
+                {view === 'Admin' && portalTab === 'Stats' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                    <StatCard label="Total Users" val={profiles.length} />
+                    <StatCard label="Workers" val={profiles.filter(p => p.role === 'Worker').length} />
+                    <StatCard label="Employers" val={profiles.filter(p => p.role === 'Employer').length} />
+                  </div>
+                )}
+                
+                {view === 'Admin' && portalTab === 'WorkersList' && (
+                  <AdminTable 
+                    title="Master Worker Registry" 
+                    data={profiles.filter(p => p.role === 'Worker')} 
+                    onVerify={handleVerifyUser}
+                    onViewDoc={(url) => setPreviewDoc(url)}
+                  />
+                )}
+                {view === 'Admin' && portalTab === 'EmployersList' && (
+                  <AdminTable 
+                    title="Master Employer Registry" 
+                    data={profiles.filter(p => p.role === 'Employer')} 
+                    onVerify={handleVerifyUser}
+                    onViewDoc={(url) => setPreviewDoc(url)}
+                  />
+                )}
 
-              {view === 'Portal' && portalTab === 'Profile' && (
-                <ProfileEditor user={user} loading={loading} tempPhoto={tempPhoto} setTempPhoto={setTempPhoto} onSave={handleUpdateProfile} />
-              )}
+                {view === 'Portal' && portalTab === 'Profile' && (
+                  <ProfileEditor user={user} loading={loading} tempPhoto={tempPhoto} setTempPhoto={setTempPhoto} onSave={handleUpdateProfile} />
+                )}
 
-              {view === 'Portal' && portalTab === 'Messages' && (
-                <MessagingView user={user} coeRequests={coeRequests} initialTarget={activeMessagingTarget} clearTarget={() => setActiveMessagingTarget(null)} onAcceptJob={handleAcceptJob} />
-              )}
+                {view === 'Portal' && portalTab === 'Messages' && (
+                  <MessagingView user={user} coeRequests={coeRequests} initialTarget={activeMessagingTarget} clearTarget={() => setActiveMessagingTarget(null)} onAcceptJob={handleAcceptJob} />
+                )}
 
-              {view === 'Portal' && portalTab === 'GovDocs' && (
-                <GovDocsView user={user} coeRequests={coeRequests} title={user.role === 'Employer' ? "Employer Verification" : "Identity Verification"} />
-              )}
+                {view === 'Portal' && portalTab === 'GovDocs' && (
+                  <GovDocsView user={user} coeRequests={coeRequests} title={user.role === 'Employer' ? "Employer Verification" : "Identity Verification"} />
+                )}
 
-              {view === 'Portal' && user.role === 'Worker' && portalTab === 'Jobs' && <JobBoardView />}
+                {view === 'Portal' && user.role === 'Worker' && portalTab === 'Jobs' && <JobBoardView />}
 
-              {view === 'Portal' && user.role === 'Employer' && portalTab === 'HiredList' && (
-                <EmployerHiresView requests={coeRequests} setRequests={setCoeRequests} user={user} />
-              )}
-            </section>
+                {view === 'Portal' && user.role === 'Employer' && portalTab === 'HiredList' && (
+                  <EmployerHiresView requests={coeRequests} setRequests={setCoeRequests} user={user} />
+                )}
+              </section>
+            </div>
           </div>
         )}
       </main>
@@ -717,8 +720,8 @@ function GovDocsView({ user, title }) {
           body: JSON.stringify(payload)
         });
 
-        // Update local state to show "Pending Review"
-        setUploadStatus("Pending Review");
+        // Update local state to show "Submitted"
+        setUploadStatus("Submitted");
         alert("Document saved successfully! Admin will review your identity.");
         setSelectedFile(null);
       } catch (error) {
@@ -752,7 +755,7 @@ function GovDocsView({ user, title }) {
           fontSize: '12px', 
           fontWeight: 'bold',
           background: getStatusColor(uploadStatus),
-          color: '#000'
+          color: '#ebe7e7'
         }}>
           {uploadStatus.toUpperCase()}
         </span>
@@ -1056,7 +1059,7 @@ function StatCard({ label, val }) {
 // Add this inside your Admin Dashboard view for WorkersList and EmployersList
 function AdminTable({ title, data, onVerify, onSuspend, onViewDoc }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '15px', padding: '30px', border: `1px solid ${THEME.border}` }}>
+    <div style={{ background: 'rgb(255, 255, 255)', borderRadius: '15px', padding: '30px', border: `1px solid ${THEME.border}` }}>
       <h3 style={{ marginBottom: '20px' }}>{title}</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
         <thead>
@@ -1069,7 +1072,7 @@ function AdminTable({ title, data, onVerify, onSuspend, onViewDoc }) {
         </thead>
         <tbody>
           {data.map((item, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+            <tr key={i} style={{ borderBottom: '1px solid rgba(255, 249, 249, 0.02)' }}>
               <td style={{ padding: '12px' }}>{item.name}</td>
               <td style={{ padding: '12px' }}>{item.email}</td>
               <td style={{ padding: '12px' }}>
