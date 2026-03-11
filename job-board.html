@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bantay - Job Board</title>
+    <link rel="stylesheet" href="style.css"> <style>
+        body { background-color: #051605; color: white; font-family: sans-serif; }
+        .container { display: flex; }
+        .main-content { flex: 1; padding: 40px; }
+        
+        /* Job Card Styling */
+        .job-card {
+            background: #0a240a;
+            border: 1px solid #1a3d1a;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            max-width: 600px;
+        }
+        .job-header { display: flex; justify-content: space-between; align-items: center; }
+        .job-title { color: #8dc63f; margin: 0; font-size: 1.5rem; }
+        .salary { color: #ffffff; font-weight: bold; }
+        .employer-name { color: #aaaaaa; font-size: 0.9rem; margin-top: 5px; }
+        
+        /* The "Hire Me" Button */
+        .btn-hire {
+            background-color: #8dc63f;
+            color: #051605;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.3s;
+        }
+        .btn-hire:hover { background-color: #7ab334; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="main-content">
+            <h1>Available Job Postings</h1>
+            <p>Find the best opportunities in Pagadian City.</p>
+            <hr style="border: 0.5px solid #1a3d1a; margin-bottom: 30px;">
+
+            <div class="job-card">
+                <div class="job-header">
+                    <h3 class="job-title">Housekeeping Staff</h3>
+                    <span class="salary">₱500 / Day</span>
+                </div>
+                <p class="employer-name">Posted by: Cherie Lautan</p>
+                <p>Looking for a trustworthy helper for daily household chores and laundry.</p>
+                
+                <button class="btn-hire" 
+                        data-employer-id="cherie_001" 
+                        data-job-title="Housekeeping Staff">
+                    Hire Me
+                </button>
+            </div>
+
+            <div class="job-card">
+                <div class="job-header">
+                    <h3 class="job-title">Night Security Guard</h3>
+                    <span class="salary">₱800 / Shift</span>
+                </div>
+                <p class="employer-name">Posted by: Bantay Admin</p>
+                <p>Require 1 personnel for gate monitoring. 8 PM to 4 AM shift.</p>
+                
+                <button class="btn-hire" 
+                        data-employer-id="admin_09" 
+                        data-job-title="Night Security Guard">
+                    Hire Me
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

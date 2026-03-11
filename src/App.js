@@ -69,10 +69,13 @@ const styles = {
 };
 
 export default function App() {
-  const [user, setUser] = useState(() => {
+ const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('bantay_session');
     return saved ? JSON.parse(saved) : null;
   });
+
+  // Correctly placed state for document previewing
+  const [previewDoc, setPreviewDoc] = useState(null); 
   
   const [view, setView] = useState('Home'); 
   const [portalTab, setPortalTab] = useState('Profile');
@@ -125,9 +128,9 @@ export default function App() {
     setPortalTab('Messages');
   };
 
+
   const handleAcceptJob = (employerEmail) => {
     setCoeRequests(prev => {
-      // Check if this specific hire already exists in the list
       const alreadyHired = prev.some(
         req => req.workerEmail === user.email && 
                req.employerEmail === employerEmail && 
@@ -139,14 +142,13 @@ export default function App() {
         return prev;
       }
 
-      // Create the new hire record with 'accepted' status
       const newHire = {
         id: Date.now(),
         workerName: user.name,
         workerEmail: user.email,
         employerEmail: employerEmail,
         date: new Date().toISOString().split('T')[0],
-        status: "accepted", // This is the trigger for the list
+        status: "accepted",
         role: user.skills || "Staff"
       };
 
@@ -185,6 +187,34 @@ export default function App() {
     } catch (e) { console.error("Sync Error:", e); }
     setLoading(false);
   };
+
+  const handleVerifyUser = async (email) => {
+    if (!window.confirm(`Mark ${email} as a Verified user?`)) return;
+
+    try {
+      setProfiles(prev => prev.map(p => 
+        p.email.toLowerCase() === email.toLowerCase() 
+          ? { ...p, doc_status: 'Verified' } 
+          : p
+      ));
+
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors', 
+        body: JSON.stringify({ 
+          action: 'updateProfile', 
+          email: email, 
+          doc_status: 'Verified' 
+        })
+      });
+
+      alert("User has been verified and synced to the database.");
+    } catch (e) {
+      console.error("Verification sync failed:", e);
+      alert("Error updating status. Please check your connection.");
+    }
+  };
+
 
   const handleLogout = () => {
     if(window.confirm("Are you sure you want to logout?")) {
@@ -266,8 +296,24 @@ export default function App() {
                   <StatCard label="Employers" val={profiles.filter(p => p.role === 'Employer').length} />
                 </div>
               )}
-              {view === 'Admin' && portalTab === 'WorkersList' && <AdminTable title="Master Worker Registry" data={profiles.filter(p => p.role === 'Worker')} />}
-              {view === 'Admin' && portalTab === 'EmployersList' && <AdminTable title="Master Employer Registry" data={profiles.filter(p => p.role === 'Employer')} />}
+              
+              {/* Added logic passing for Workers and Employers lists */}
+              {view === 'Admin' && portalTab === 'WorkersList' && (
+                <AdminTable 
+                  title="Master Worker Registry" 
+                  data={profiles.filter(p => p.role === 'Worker')} 
+                  onVerify={handleVerifyUser}
+                  onViewDoc={(url) => setPreviewDoc(url)}
+                />
+              )}
+              {view === 'Admin' && portalTab === 'EmployersList' && (
+                <AdminTable 
+                  title="Master Employer Registry" 
+                  data={profiles.filter(p => p.role === 'Employer')} 
+                  onVerify={handleVerifyUser}
+                  onViewDoc={(url) => setPreviewDoc(url)}
+                />
+              )}
 
               {view === 'Portal' && portalTab === 'Profile' && (
                 <ProfileEditor user={user} loading={loading} tempPhoto={tempPhoto} setTempPhoto={setTempPhoto} onSave={handleUpdateProfile} />
@@ -290,10 +336,24 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Document Preview Overlay */}
+      {previewDoc && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+          <div style={{ position: 'relative', maxWidth: '80%', maxHeight: '80%' }}>
+            <button 
+              onClick={() => setPreviewDoc(null)}
+              style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
+            >
+              ✕ Close
+            </button>
+            <img src={previewDoc} style={{ width: '100%', borderRadius: '10px', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }} alt="ID Proof" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 // --- SUB-COMPONENTS ---
 
 function HomeView({ filteredWorkers, user, setSearchQuery, onStartMsg }) {
@@ -993,30 +1053,67 @@ function StatCard({ label, val }) {
   );
 }
 
-function AdminTable({ title, data }) {
+// Add this inside your Admin Dashboard view for WorkersList and EmployersList
+function AdminTable({ title, data, onVerify, onSuspend, onViewDoc }) {
   return (
-    <div>
-      <h2 style={{ marginBottom: '20px' }}>{title}</h2>
-      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <tr style={{ textAlign: 'left', opacity: 0.5, fontSize: '12px' }}>
-              <th style={{ padding: '15px' }}>NAME</th>
-              <th style={{ padding: '15px' }}>EMAIL</th>
-              <th style={{ padding: '15px' }}>ACTION</th>
+    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '15px', padding: '30px', border: `1px solid ${THEME.border}` }}>
+      <h3 style={{ marginBottom: '20px' }}>{title}</h3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+        <thead>
+          <tr style={{ textAlign: 'left', borderBottom: `1px solid ${THEME.border}`, opacity: 0.5 }}>
+            <th style={{ padding: '12px' }}>NAME</th>
+            <th style={{ padding: '12px' }}>EMAIL</th>
+            <th style={{ padding: '12px' }}>STATUS</th>
+            <th style={{ padding: '12px' }}>ACTION</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item, i) => (
+            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+              <td style={{ padding: '12px' }}>{item.name}</td>
+              <td style={{ padding: '12px' }}>{item.email}</td>
+              <td style={{ padding: '12px' }}>
+                <span style={{ 
+                  fontSize: '10px', 
+                  padding: '2px 8px', 
+                  borderRadius: '4px', 
+                  background: item.doc_status === 'Verified' ? THEME.avocado : THEME.glass,
+                  color: item.doc_status === 'Verified' ? '#fff' : 'inherit'
+                }}>
+                  {item.doc_status || 'Pending'}
+                </span>
+              </td>
+              <td style={{ padding: '12px', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                {/* View ID Button */}
+                <button 
+                  onClick={() => onViewDoc(item.gov_id_url || item.photourl)} 
+                  style={{ background: 'transparent', color: '#3498db', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  View ID
+                </button>
+
+                {/* Verify Button */}
+                {item.doc_status !== 'Verified' && (
+                  <button 
+                    onClick={() => onVerify(item.email)}
+                    style={{ background: 'transparent', color: THEME.avocado, border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    Verify
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => onSuspend(item.email)}
+                  style={{ background: 'transparent', color: '#e74c3c', border: 'none', cursor: 'pointer' }}
+                >
+                  Suspend
+                </button>
+                
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {data.map((item, i) => (
-              <tr key={i} style={{ borderBottom: `1px solid ${THEME.border}` }}>
-                <td style={{ padding: '15px' }}>{item.name}</td>
-                <td style={{ padding: '15px' }}>{item.email}</td>
-                <td style={{ padding: '15px' }}><button style={{ color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer' }}>Suspend</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
